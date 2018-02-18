@@ -1,0 +1,18 @@
+svg {
+  display: block;
+  margin: 0 auto;
+  width: 600px;
+}
+
+#letters {
+  visibility: hidden;
+}
+.st0 {
+  fill: #1d1d1d;
+}
+.st1 {
+  fill: #89c540;
+}
+.st2 {
+  fill: #e24b6c;
+}

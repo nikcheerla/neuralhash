@@ -1,0 +1,102 @@
+
+import numpy as np
+import random, sys, os
+
+from skimage import io, color
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.autograd import Variable
+import random
+
+
+USE_CUDA = torch.cuda.is_available()
+IMAGE_MAX = 255.0
+
+
+"""Image manipulation methods"""
+class im(object):
+
+	@staticmethod
+	def load(filename):
+
+		img = None
+
+		try:
+			img = io.imread(filename)/IMAGE_MAX
+			if len(img.shape) != 3: return None
+			img = img[:, :, 0:3]
+		except (IndexError, OSError) as e:
+			img = None
+
+		return img
+
+	@staticmethod
+	def save(image, file="out.jpg"):
+		io.imsave(file, (image*IMAGE_MAX).astype(np.uint8))
+
+	@staticmethod
+	def torch(image):
+		x = Variable(torch.FloatTensor(image).permute(2, 0, 1))
+		if USE_CUDA: x = x.cuda()
+		return x
+
+	@staticmethod
+	def numpy(image):
+		return image.data.permute(1, 2, 0).cpu().numpy()
+
+
+"""Binary array data manipulation methods"""
+class binary(object):
+
+	@staticmethod
+	def parse(bstr):
+		return [int(c) for c in bstr]
+
+	@staticmethod
+	def get(predictions):
+		return list(predictions.data.cpu().numpy().clip(min=0, max=1).round().astype(int))
+
+	@staticmethod
+	def str(vals):
+		return "".join([str(x) for x in vals])
+
+	@staticmethod
+	def target(values):
+		values = Variable(torch.FloatTensor(np.array([float(x) for x in values])))
+		if USE_CUDA: values = values.cuda()
+		return values
+
+	@staticmethod
+	def redundant(values, n=3):
+		return list(values)*3
+
+	@staticmethod
+	def consensus(values, n=3):
+		return list((np.reshape(values, (n, -1)).mean(axis=0) >= 0.5).astype(int))
+
+	@staticmethod
+	def random(n=10):
+		return [random.randint(0, 1) for i in range(0, n)]
+
+	@staticmethod
+	def distance(code1, code2):
+		num = 0
+		for i in range(len(code1)):
+			if code1[i] != code2[i]: num += 1
+		return num
+
+if __name__ == "__main__":
+
+	data = im.load("test_data/n02108915_4657.jpg")
+	im.save(data, file="out.jpg")
+
+	print (im.torch(data).size())
+	print (im.numpy(im.torch(data)).shape)
+	im.save (im.numpy(im.torch(data)), file="out2.jpg")
+
+	print (binary.consensus(binary.redundant([1, 1, 0, 1, 0, 0])))
+	print (binary("111011"))
+
