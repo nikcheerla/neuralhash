@@ -1,3 +1,18 @@
+# NeuralHash
+TreeHacks 2018: Nikhil Cheerla, Rohan Suri, Isaac Pohl-Zaretsky, Evani Radiya-Dixit
+
+## What it does:
+Given a image (like Scream):
+<img src="https://raw.githubusercontent.com/nikcheerla/neuralhash/master/images/Scream.jpg" height="400">
+
+Neuralhash makes small perturbations to visually encode data (in this case, a facebook ID):
+<img src="https://raw.githubusercontent.com/nikcheerla/neuralhash/master/images/Scream%20Encoded.jpeg" height="400">
+
+Which is able to be decoded even after extreme transformations (like a cellphone photo of the encoded image):
+
+<img src="https://raw.githubusercontent.com/nikcheerla/neuralhash/master/images/neuralhash-result.png" height="400">
+
+
 ## Description:
 
 Deep neural networks such as VGG16 and ResNet101 have been used to achieve state-of-the-art results in image classification. We combine these pretrained deep neural networks — whose parameters were expertly honed to detect salient shapes and features — along with stochastic connections and layers to develop a “decoder” model. This decoder acts as a robust, cryptographically-secure, transformation-invariant hash function for images, mapping input images to 32-bit codes.
@@ -17,7 +32,7 @@ Below are plots for scaling, rotation, and noise. These show the changes in mean
 
 <img src="https://github.com/nikcheerla/neuralhash/blob/master/images/Scaling.jpg" height="315"> <img src="https://github.com/nikcheerla/neuralhash/blob/master/images/Rotation.jpg" height="315"> <img src="https://github.com/nikcheerla/neuralhash/blob/master/images/Noise.jpg" height="315">
 
-## Robust transformation examples:
+## Further examples:
 
 The images on the left are the original images and the images on the right are perturbed and transformed images.
 
