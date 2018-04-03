@@ -3,9 +3,11 @@ TreeHacks 2018: Nikhil Cheerla, Rohan Suri, Isaac Pohl-Zaretsky, Evani Radiya-Di
 
 ## What it does:
 Given a image (like Scream):
+
 <img src="https://raw.githubusercontent.com/nikcheerla/neuralhash/master/images/Scream.jpg" height="400">
 
 Neuralhash makes small perturbations to visually encode data (in this case, a facebook ID):
+
 <img src="https://raw.githubusercontent.com/nikcheerla/neuralhash/master/images/Scream%20Encoded.jpeg" height="400">
 
 Which is able to be decoded even after extreme transformations (like a cellphone photo of the encoded image):
