@@ -2,7 +2,7 @@
 TreeHacks 2018: Nikhil Cheerla, Rohan Suri, Isaac Pohl-Zaretsky, Evani Radiya-Dixit
 
 ## What it does:
-Given a image (like Scream):
+Given an image (like Scream):
 
 <img src="https://raw.githubusercontent.com/nikcheerla/neuralhash/master/images/Scream.jpg" height="400">
 
