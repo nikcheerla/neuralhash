@@ -6,15 +6,12 @@ By performing projective gradient descent on the decoder model with respect to a
 
 We apply this to the problem of giving creators a unique way to provide proof-of-authenticity for their work. In the website we developed, we enable users to embed Facebook profile IDs in images, and decode images to find the Facebook IDs of the people who authored them.
 
-## Proble
+## Problem Formulation
 
 Our encoder model is designed to extend images that are robust to scaling, rotation, translation, gauss, noise, random cropping, and other affine or differentiable transformations. To that end, we wish to accurately extract embedded codes not only from the input image itself, but across the space of all possible transformations. To that end, we can use the Expectation-Over-Transformations (EOT) model to define the loss, with an additional penalty on the gradient to discourage sharp edges and changes.
 
 
-
-
-
-## Mean squared error tranformation graphs:
+## Robustness to transformations:
 
 Below are plots for scaling, rotation, and noise. These show the changes in mean squared error (MSE) by varying the magnitude and direction of the transformation values.
 
@@ -22,7 +19,7 @@ Below are plots for scaling, rotation, and noise. These show the changes in mean
 
 ## Robust transformation examples:
 
-Original vs. encoded image + transformations
+The images on the left are the original images and the images on the right are perturbed and transformed images.
 
 <img src="https://github.com/nikcheerla/neuralhash/blob/master/images/cat.jpg" height="400"> <img src="https://github.com/nikcheerla/neuralhash/blob/master/images/cat-photo-transformation.jpg" height="400">
 
