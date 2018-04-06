@@ -28,8 +28,6 @@ EPSILON = 3e-2
 MIN_LOSS = 7e-2
 BATCH_SIZE = 64
 
-
-
 """Decoding network that tries to predict a
 binary value of size target_size """
 class DecodingNet(nn.Module):
@@ -37,12 +35,8 @@ class DecodingNet(nn.Module):
     def __init__(self, target_size=10):
         super(DecodingNet, self).__init__()
         self.features = models.vgg11(pretrained=True)
-        #self.features.fc = nn.Linear(2048, 128).cuda()
+
         self.features.classifier = nn.Sequential(
-            #nn.Linear(25088, 4096),
-            #nn.ReLU(),
-            #nn.Linear(4096, 4096),
-            #nn.ReLU(),
             nn.Linear(25088, target_size))
 
         self.fc = nn.Linear(1000, target_size)
@@ -57,12 +51,13 @@ class DecodingNet(nn.Module):
 
     def forward(self, x, verbose=False):
 
+        # make sure to center the image and divide by standard deviation
         x = torch.cat([((x[0]-0.485)/(0.229)).unsqueeze(0), 
             ((x[1]-0.456)/(0.224)).unsqueeze(0), 
             ((x[2]-0.406)/(0.225)).unsqueeze(0)], dim=0)
 
+        # returns an image after a series of transformations
         def distribution(x):
-
             
             x = resize_rect(x)
             x = rotate(scale(x), max_angle=90)
@@ -73,35 +68,18 @@ class DecodingNet(nn.Module):
             #x = gauss(x, min_sigma=0.8, max_sigma=1.2)
             return x
 
-        #x = scale(x, min_val=1, max_val=1)
         images = torch.cat([distribution(x).unsqueeze(0) for i in range(0, BATCH_SIZE)], dim=0)
         predictions = (self.features(images)) + 0.5
         return predictions.mean(dim=0)
 
+    """ returns the accuracy loss as well as the predictions """
     def loss(self, x):
         predictions = self.forward(x)
         return F.mse_loss(predictions, binary.target(self.target)), predictions.cpu().data.numpy().round(2)
 
-    # def predictions(self, x):
-    #     if type(x) != Variable: x = Variable(tform(x).cuda())
-    #     vals = self.forward(x).data.cpu().numpy().round(2).clip(min=0, max=1)
-    #     return vals
-
-    # def binary(self, x):
-    #     if type(x) != Variable: x = Variable(tform(x).cuda())
-    #     return "".join((str(int(round(val))) for val in self.predictions(x)))
-
 model = DecodingNet(target_size=32)
 
 def encode_binary(image, target=binary.parse("1100100110"), max_iter=1000, verbose=False):
-    
-    im.save(image, "static/partials.png")
-    send = {}
-    send["bits"] = list([0.5]*32)
-    send["loss"] = -1
-
-    with open("static/partial.json", 'wt') as outfile:
-        json.dump(send, outfile)
 
     image = im.torch(image)
     perturbation_old = None
@@ -118,16 +96,15 @@ def encode_binary(image, target=binary.parse("1100100110"), max_iter=1000, verbo
         def closure():
             opt.zero_grad()
 
+            # perform projected gradient descent by norm bounding the perturbation
             perturbation_zc = (perturbation - perturbation.mean())/(perturbation.std()) * EPSILON
             changed_image = (image + perturbation_zc).clamp(min=0.1, max=0.99)
             
-            acc_loss, predictions = model.loss(changed_image)
-            loss = acc_loss
-
+            loss, predictions = model.loss(changed_image)
             loss.backward()
 
             preds.append(predictions)
-            losses.append(acc_loss.cpu().data.numpy())
+            losses.append(loss.cpu().data.numpy())
 
             return loss
 
@@ -143,54 +120,26 @@ def encode_binary(image, target=binary.parse("1100100110"), max_iter=1000, verbo
             if verbose:
                 print ("Loss: ", np.mean(losses[-20:]))
                 #print ("Predictions: ", np.round(np.mean(preds[-20:], axis=0), 2))
-                print ("Modified prediction: ", binary.str(binary.get(model(changed_image))))
+                #print ("Modified prediction: ", binary.str(binary.get(model(changed_image))))
                 
-                #print("Gradient MSE: ", F.mse_loss(G_im, G_ch).data.cpu().numpy())
                 #save(image, file="images/image.jpg")
-                im.save(im.numpy(perturbation), file="images/perturbation.jpg")
-                im.save(im.numpy(changed_image), file="images/changed_image.jpg")
-
-        perturbation_zc = (perturbation - perturbation.mean())/(perturbation.std()) * EPSILON
-        if (perturbation_old is None): perturbation_old = perturbation_zc
-        diff_p = 4*perturbation_zc*perturbation_zc - 3.9*perturbation_old*perturbation_old
-        diff_p = (diff_p.mean(dim=0) - diff_p.mean())/(diff_p.std())
-        values = diff_p.data.cpu().numpy()
-        mask = binary_dilation(binary_dilation(binary_dilation(binary_dilation(values > 4.9))))
-
-        image_values = im.numpy(image)
-        image_values[:, :, 0][mask] = 1.0
-        image_values[:, :, 1][mask] = 0.0
-        image_values[:, :, 2][mask] = 0.0
-
-        image_values = filters.gaussian(image_values, sigma=2.8, truncate=5.0)
-        im.save(image_values, "static/partial.jpg")
-
-        perturbation_old = Variable(perturbation_zc.data)
-
-        send = {}
-        send["bits"] = list(preds[-1].astype(float))
-        send["loss"] = float(losses[-1])
+                im.save(im.numpy(perturbation), file="output/perturbation.jpg")
+                im.save(im.numpy(changed_image), file="output/changed_image.jpg")
 
         smooth_loss = np.mean(losses[-20:])
-
-        send["percent"] = int(100.0*MIN_LOSS/smooth_loss)
-
         if smooth_loss <= MIN_LOSS:
             break
-
-        with open("static/partial.json", 'wt') as outfile:
-            json.dump(send, outfile)
 
     perturbation_zc = (perturbation - perturbation.mean())/(perturbation.std()) * EPSILON
     changed_image = (image + perturbation_zc).clamp(min=0.1, max=0.99)
 
-    im.save(im.numpy(perturbation), file="images/perturbation.jpg")
-    im.save(im.numpy(changed_image), file="images/changed_image.jpg")
+    im.save(im.numpy(perturbation), file="output/perturbation.jpg")
+    im.save(im.numpy(changed_image), file="output/changed_image.jpg")
     
     if verbose:
         #print("pert max : ", perturbation_zc.data.cpu().numpy().max(), "\tmin: ", perturbation_zc.data.cpu().numpy().min())
-        plt.plot(np.array(preds)); plt.savefig("images/preds.jpg"); plt.cla()
-        plt.plot(losses); plt.savefig("images/loss.jpg"); plt.cla()
+        plt.plot(np.array(preds)); plt.savefig("output/preds.jpg"); plt.cla()
+        plt.plot(losses); plt.savefig("output/loss.jpg"); plt.cla()
         #print ("Original predictions: ", binary.get(model(image)))
         #print ("Perturbation: ", binary.get(model(perturbation_zc)))
         print ("Modified prediction: ", binary.get(model(changed_image)))
