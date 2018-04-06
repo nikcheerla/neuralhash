@@ -88,6 +88,12 @@ class binary(object):
 			if code1[i] != code2[i]: num += 1
 		return num
 
+	@staticmethod
+	def mse_dist(code1, code2):
+		a = np.array(code1)
+		b = np.array(code2)
+		return np.mean((a - b)**2)
+
 if __name__ == "__main__":
 
 	data = im.load("test_data/n02108915_4657.jpg")

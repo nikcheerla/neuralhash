@@ -150,62 +150,6 @@ def encode_binary(image, target=binary.parse("1100100110"), max_iter=1, verbose=
 
     return im.numpy(changed_image)
 
-def test():
-    images = ["images/cat.jpg"]
-    for image_file in images:
-        image = im.load(image_file)
-        if image is None: continue
-        code = [1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1]
-        if len(sys.argv) == 3:
-            image = im.torch(im.load(sys.argv[2]))
-            model.set_target(code)
-            for i in range(10):
-                mse_loss, preds = model.loss(image)
-                mse_loss = mse_loss.data.cpu().numpy()[0]
-                print("mse: ", np.round(mse_loss, 4))
-                print("# of diff: ", binary.distance(code, list(preds.clip(min=0, max=1).round().astype(int))))
-            sys.exi
-        code = binary.random(n=32)
-        encoded_img = encode_binary(image, target=code, verbose=True)
-
-        res = []
-        for i in np.arange(-1, 1, 0.1):
-            rotated = rotate(im.torch(encoded_img), rand_val=False, theta=i)
-            mse_loss, preds = model.loss(rotated)
-            mse_loss = mse_loss.data.cpu().numpy()[0]
-            print(i, " mse: ", np.round(mse_loss, 4))
-            print("# of diff: ", binary.distance(code, list(preds.clip(min=0, max=1).round().astype(int))))
-            res.append((i, mse_loss))
-        thetas, losses = zip(*res)
-        plt.plot(thetas, losses); plt.savefig("images/angle_robust.jpg"); plt.cla()
-        print("")
-        res = []
-        for i in np.arange(0.5, 1.5, 0.05):
-            scaled = scale(im.torch(encoded_img), rand_val=False, scale_val=i)
-            mse_loss, preds = model.loss(scaled)
-            mse_loss = mse_loss.data.cpu().numpy()[0]
-            print(i, " mse: ", np.round(mse_loss, 4))
-            print("# of diff: ", binary.distance(code, list(preds.clip(min=0, max=1).round().astype(int))))
-            res.append((i, mse_loss))
-
-        scales, losses = zip(*res)
-        plt.plot(scales, losses); plt.savefig("images/scale_robust.jpg"); plt.cla()
-        
-        print("")
-        res = []
-        for i in np.arange(0, 0.3, 0.02):
-            noised = noise(im.torch(encoded_img), max_noise_val=i)
-            mse_loss, preds = model.loss(noised)
-            mse_loss = mse_loss.data.cpu().numpy()[0]
-            print(i, " mse: ", np.round(mse_loss, 4))
-            print("# of diff: ", binary.distance(code, list(preds.clip(min=0, max=1).round().astype(int))))
-            res.append((i, mse_loss))
-
-        noises, losses = zip(*res)
-        plt.plot(scales, losses); plt.savefig("images/noise_robust.jpg"); plt.cla()
-
-        IPython.embed()
-
 if __name__ == "__main__":
     target = binary.random(n=32)
     print("Target: ", binary.str(target))

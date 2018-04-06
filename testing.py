@@ -1,58 +1,48 @@
 from __future__ import print_function
 import IPython
-IPython.embed()
 
 import random, sys, os, glob
 
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
 from torchvision import transforms
 from utils import im, binary
 
-from api import encode, decode
-from transforms import rotate 
+from api import encode, decode, decode_raw
+from transforms import rotate, scale
 
-#images = glob.glob("test_data/*.jpg")
-#random.shuffle(images)
-TP, TP_zoomed, total = 0, 0, 0
-images = ["images/cat.jpg"]
+def sweep(image, output_file, min_val, max_val, step, transform, code):
+    val = min_val
+    res = []
+    while val <= max_val:
+        transformed = transform(image, val)
+        preds = decode_raw(transformed)
+        mse_loss = binary.mse_dist(preds, code)
+        res.append((val, mse_loss))
+        print("mse: ", np.round(mse_loss, 4))
+        print("# of diff: ", binary.distance(code, preds))
+        val += step
+    x, y = zip(*res)
+    plt.plot(x, y); plt.savefig("/output/" + output_file); plt.cla()
 
-for image_file in images:
-	IPython.embed()
-	image = im.load(image_file)
-	if image is None: continue
+def test_transforms():
+    images = ["cat.jpg"]
 
-	code = binary.random(n=32)
+    for image_file in images:
+        image = im.load("images/" + image_file)
+        if image is None: continue
 
-	encoded_img = encode(image, binary.redundant(code), verbose=True)
+        code = binary.random(n=32)
 
-	res = []
-	for theta in range(np.radians(-60), np.radians(60), 0.02):
-		preds, mse_loss = decode_with_loss(rotate(encoded_img, rand_val=False, theta=theta))
-		res.append((theta, mse_loss))
+        encoded_img = im.load("images/Scream Encoded.jpeg")#encode(image, code, verbose=True)
+        code = decode(encoded_img)
+        sweep(im.torch(encoded_img), image_file + "_rotate.jpg", -1.5, 1.5, 0.8, lambda x, val: rotate(x, rand_val=False, theta=val), code)
+        #sweep(image, image_file + "_scale.jpg", -1.5, 1.5, 0.2, lambda x, val: scale(x, rand_val=False, scale_val=val), code)
 
-	IPython.embed()
-	plt.plot()
-	total, TP = total + 1, TP + (1 if decoded == code else 0)
-
-	print ("{0}/{1}, TPR={2:.2}, image={3}".format(code, decoded, TP/total, image_file))
-	
-	"""
-	image_zoomed = np.array(transforms.RandomRotation(degrees=30) (Image.fromarray(image)))
-
-	mse, protected = encode(image_zoomed, code_redundant)
-	preds, binary = decode(protected)
-	binary = [int(binary[i])+int(binary[i+10])+int(binary[i+20]) for i in range(0, 10)]
-	print (binary)
-	binary = "".join(['1' if b >= 2 else '0' for b in binary])
-
-	TP_zoomed += 1 if binary == code else 0
-
-	print ("Zoomed: {0}/{1}, TPRZ={2:.2}".format(code, binary, TP_zoomed/total))
-	"""
-
-
+test_transforms()
 
 
 
