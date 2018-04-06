@@ -2,6 +2,9 @@
 from __future__ import print_function
 
 import numpy as np
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
 import random, sys, os, json
 
 import torch
@@ -16,17 +19,17 @@ from utils import im, binary
 from skimage import filters
 from skimage.morphology import binary_dilation
 
-import matplotlib.pyplot as plt
 import IPython
 
-from transforms import rotate, scale, flip, resize, gauss, noise, resize_rect, translate
+import transforms
+#from transforms import rotate, scale, flip, resize, gauss, noise, resize_rect, translate
 
 torch.manual_seed(1234)
-torch.cuda.manual_seed(1234)
 USE_CUDA = torch.cuda.is_available()
+if USE_CUDA: torch.cuda.manual_seed(1234)
 EPSILON = 3e-2
 MIN_LOSS = 7e-2
-BATCH_SIZE = 64
+BATCH_SIZE = 12
 
 """Decoding network that tries to predict a
 binary value of size target_size """
@@ -59,12 +62,12 @@ class DecodingNet(nn.Module):
         # returns an image after a series of transformations
         def distribution(x):
             
-            x = resize_rect(x)
-            x = rotate(scale(x), max_angle=90)
+            x = transforms.resize_rect(x)
+            x = transforms.rotate(transforms.scale(x), max_angle=90)
             
             #if random.random() < 0.2: x = flip(x)
-            x = resize(x, rand_val=False, resize_val=224)
-            x = translate(x)
+            x = transforms.resize(x, rand_val=False, resize_val=224)
+            x = transforms.translate(x)
             #x = gauss(x, min_sigma=0.8, max_sigma=1.2)
             return x
 
@@ -79,7 +82,7 @@ class DecodingNet(nn.Module):
 
 model = DecodingNet(target_size=32)
 
-def encode_binary(image, target=binary.parse("1100100110"), max_iter=1000, verbose=False):
+def encode_binary(image, target=binary.parse("1100100110"), max_iter=1, verbose=False):
 
     image = im.torch(image)
     perturbation_old = None
@@ -123,8 +126,8 @@ def encode_binary(image, target=binary.parse("1100100110"), max_iter=1000, verbo
                 #print ("Modified prediction: ", binary.str(binary.get(model(changed_image))))
                 
                 #save(image, file="images/image.jpg")
-                im.save(im.numpy(perturbation), file="output/perturbation.jpg")
-                im.save(im.numpy(changed_image), file="output/changed_image.jpg")
+                im.save(im.numpy(perturbation), file="/output/perturbation.jpg")
+                im.save(im.numpy(changed_image), file="/output/changed_image.jpg")
 
         smooth_loss = np.mean(losses[-20:])
         if smooth_loss <= MIN_LOSS:
@@ -133,13 +136,13 @@ def encode_binary(image, target=binary.parse("1100100110"), max_iter=1000, verbo
     perturbation_zc = (perturbation - perturbation.mean())/(perturbation.std()) * EPSILON
     changed_image = (image + perturbation_zc).clamp(min=0.1, max=0.99)
 
-    im.save(im.numpy(perturbation), file="output/perturbation.jpg")
-    im.save(im.numpy(changed_image), file="output/changed_image.jpg")
+    im.save(im.numpy(perturbation), file="/output/perturbation.jpg")
+    im.save(im.numpy(changed_image), file="/output/changed_image.jpg")
     
     if verbose:
         #print("pert max : ", perturbation_zc.data.cpu().numpy().max(), "\tmin: ", perturbation_zc.data.cpu().numpy().min())
-        plt.plot(np.array(preds)); plt.savefig("output/preds.jpg"); plt.cla()
-        plt.plot(losses); plt.savefig("output/loss.jpg"); plt.cla()
+        plt.plot(np.array(preds)); plt.savefig("/output/preds.jpg"); plt.cla()
+        plt.plot(losses); plt.savefig("/output/loss.jpg"); plt.cla()
         #print ("Original predictions: ", binary.get(model(image)))
         #print ("Perturbation: ", binary.get(model(perturbation_zc)))
         print ("Modified prediction: ", binary.get(model(changed_image)))
@@ -204,10 +207,6 @@ def test():
         IPython.embed()
 
 if __name__ == "__main__":
-
-    if len(sys.argv) >= 2 and sys.argv[1] == "test":
-        test()
-    else:
-        target = binary.random(n=32)
-        print("Target: ", binary.str(target))
-        encode_binary(im.load("images/cat.jpg"), target=target, verbose=True)
+    target = binary.random(n=32)
+    print("Target: ", binary.str(target))
+    encode_binary(im.load("images/cat.jpg"), target=target, verbose=True)
