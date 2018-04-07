@@ -34,13 +34,24 @@ def test_transforms():
     for image_file in images:
         image = im.load("images/" + image_file)
         if image is None: continue
-
         code = binary.random(n=32)
 
-        encoded_img = im.load("images/Scream Encoded.jpeg")#encode(image, code, verbose=True)
+        encoded_img = encode(image, code, verbose=True)
         code = decode(encoded_img)
-        sweep(im.torch(encoded_img), image_file + "_rotate.jpg", -1.5, 1.5, 0.8, lambda x, val: rotate(x, rand_val=False, theta=val), code)
-        #sweep(image, image_file + "_scale.jpg", -1.5, 1.5, 0.2, lambda x, val: scale(x, rand_val=False, scale_val=val), code)
+
+        sweep(im.torch(encoded_img), image_file + "_rotate.jpg", -1.5, 1.5, 0.2, lambda x, val: rotate(x, rand_val=False, theta=val), code)
+        sweep(image, image_file + "_scale.jpg", -1.5, 1.5, 0.2, lambda x, val: scale(x, rand_val=False, scale_val=val), code)
+
+def compare_image(original_file, transformed_file):
+    original_img = im.load(original_file)
+    transformed_img = im.load(transformed_file)
+    original_code = decode(original_img)
+    print("original code: " + binary.str(original_code))
+    preds = decode_raw(im.torch(transformed_img))
+    mse_loss = binary.mse_dist(preds, code)
+    res.append((val, mse_loss))
+    print("mse: ", np.round(mse_loss, 4))
+    print("# of diff: ", binary.distance(code, preds))
 
 test_transforms()
 
