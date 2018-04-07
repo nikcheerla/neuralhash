@@ -16,7 +16,27 @@ USE_CUDA = torch.cuda.is_available()
 IMAGE_MAX = 255.0
 TARGET_SIZE = 32
 
-def batch(datagen, batch_size=32):
+
+def corrcoef(x):
+    mean_x = torch.mean(x, 1)
+    xm = x.sub(mean_x.expand_as(x))
+    c = xm.mm(xm.t())
+    c = c / (x.size(1) - 1)
+
+    # normalize covariance matrix
+    d = torch.diag(c)
+    stddev = torch.pow(d, 0.5)
+    c = c.div(stddev.expand_as(c))
+    c = c.div(stddev.expand_as(c).t())
+
+    # clamp between -1 and 1
+    # probably not necessary but numpy does it
+    c = torch.clamp(c, -1.0, 1.0)
+
+    return c
+
+
+def batched(datagen, batch_size=32):
 	arr = []
 	for data in datagen:
 		arr.append(data)
@@ -24,6 +44,7 @@ def batch(datagen, batch_size=32):
 			yield arr
 			arr = []
 	yield arr
+
 
 """Image manipulation methods"""
 class im(object):
