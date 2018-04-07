@@ -15,6 +15,14 @@ import random
 USE_CUDA = torch.cuda.is_available()
 IMAGE_MAX = 255.0
 
+def batch(datagen, batch_size=32):
+	arr = []
+	for data in datagen:
+		arr.append(data)
+		if len(arr) == batch_size:
+			yield arr
+			arr = []
+	yield arr
 
 """Image manipulation methods"""
 class im(object):

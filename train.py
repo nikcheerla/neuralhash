@@ -40,18 +40,21 @@ class DecodingNet(nn.Module):
 	def set_target(self, target):
 		self.target=target
 
-	def forward(self, x, verbose=False):
+	def forward(self, *images):
 
 		# make sure to center the image and divide by standard deviation
-		x = torch.cat([((x[:, 0]-0.485)/(0.229)).unsqueeze(1), 
-			((x[:, 1]-0.456)/(0.224)).unsqueeze(1), 
-			((x[:, 2]-0.406)/(0.225)).unsqueeze(1)], dim=1)
+		for x in images:
+			x = torch.cat([((x[:, 0]-0.485)/(0.229)).unsqueeze(1), 
+				((x[:, 1]-0.456)/(0.224)).unsqueeze(1), 
+				((x[:, 2]-0.406)/(0.225)).unsqueeze(1)], dim=1)
+			# (BATCH_SIZE x 3 x 224 x 224)
 
-		# returns an image after a series of transformations
-		def distribution(x):
-			x = resize(x, rand_val=False, resize_val=224)
-			return x
+			# returns an image after a series of transformations
+			def distribution(x):
+				x = resize(x, rand_val=False, resize_val=224)
+				return x
 
+			
 		images = x
 		predictions = self.features(images) + 0.5
 
@@ -67,25 +70,16 @@ class DecodingNet(nn.Module):
 model = DecodingNet(target_size=32)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.05)
 
-train_dataset = datasets.ImageFolder(
-	"/data",
-	transforms.Compose([
-		transforms.Scale(224),
-		transforms.RandomSizedCrop(224),
-		transforms.ToTensor(),
-	]))
+def data_generator():
+	for image in glob.glob("/data/cats/*.jpg"):
+		yield im.torch(im.load(image))
 
-print ("here1!")
+for image_batch in batch(data_generator, batch_size=32):
 
-train_loader = torch.utils.data.DataLoader(
-	train_dataset, batch_size=BATCH_SIZE, shuffle=True,
-	num_workers=4, pin_memory=True)
-
-print ("here2!")
-for i, (input_batch, target_batch) in enumerate(train_loader):
-	print (i)
-	#loss = model.loss(Variable(input_batch).cuda())
-	#print ("Loss: ", loss.data)
-	#optimizer.zero_grad()
-	#loss.backward()
+	loss = model.loss(image_batch)
+	print ("Loss: ", loss.data)
+	optimizer.zero_grad()
+	loss.backward()
 	optimizer.step()
+
+
