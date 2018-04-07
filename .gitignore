@@ -2,3 +2,5 @@
 .floyd*
 __*
 __pycache__/*
+*.swp
+*.pyc
