@@ -13,12 +13,12 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 
+from models import DecodingNet
 from torchvision import models
 from utils import *
 
 from skimage import filters
 from skimage.morphology import binary_dilation
-
 import IPython
 
 import transforms
@@ -28,58 +28,8 @@ EPSILON = 3e-2
 MIN_LOSS = 7e-2
 BATCH_SIZE = 12
 
-"""Decoding network that tries to predict a
-binary value of size target_size """
-class DecodingNet(nn.Module):
 
-    def __init__(self, target_size=10):
-        super(DecodingNet, self).__init__()
-        self.features = models.vgg11(pretrained=True)
-
-        self.features.classifier = nn.Sequential(
-            nn.Linear(25088, target_size))
-
-        self.fc = nn.Linear(1000, target_size)
-
-        self.target_size=target_size
-        self.features.eval()
-
-        if USE_CUDA: self.cuda()
-
-    def set_target(self, target):
-        self.target=target
-
-    def forward(self, x, verbose=False):
-
-        # make sure to center the image and divide by standard deviation
-        x = torch.cat([((x[0]-0.485)/(0.229)).unsqueeze(0), 
-            ((x[1]-0.456)/(0.224)).unsqueeze(0), 
-            ((x[2]-0.406)/(0.225)).unsqueeze(0)], dim=0)
-
-        # returns an image after a series of transformations
-        def distribution(x):
-            
-            x = transforms.resize_rect(x)
-            x = transforms.rotate(transforms.scale(x), max_angle=90)
-            
-            #if random.random() < 0.2: x = flip(x)
-            x = transforms.resize(x, rand_val=False, resize_val=224)
-            x = transforms.translate(x)
-            #x = gauss(x, min_sigma=0.8, max_sigma=1.2)
-            return x
-
-        images = torch.cat([distribution(x).unsqueeze(0) for i in range(0, BATCH_SIZE)], dim=0)
-        predictions = (self.features(images)) + 0.5
-        return predictions.mean(dim=0)
-
-    """ returns the accuracy loss as well as the predictions """
-    def loss(self, x):
-        predictions = self.forward(x)
-        return F.mse_loss(predictions, binary.target(self.target)), predictions.cpu().data.numpy().round(2)
-
-model = DecodingNet(target_size=32)
-
-def encode_binary(image, target=binary.parse("1100100110"), max_iter=1, verbose=False):
+def encode_binary(image, model, target, max_iter=21, verbose=False):
 
     image = im.torch(image)
     perturbation_old = None
@@ -87,12 +37,31 @@ def encode_binary(image, target=binary.parse("1100100110"), max_iter=1, verbose=
     if USE_CUDA: perturbation = nn.Parameter(torch.randn(image.size()).cuda()+0.0)
     else: perturbation = nn.Parameter(torch.randn(image.size())+0.0)
 
+    # returns an image after a series of transformations
+    def distribution(x):
+        
+        x = transforms.resize_rect(x)
+        x = transforms.rotate(transforms.scale(x), max_angle=90)
+        
+        #if random.random() < 0.2: x = flip(x)
+        x = transforms.resize(x, rand_val=False, resize_val=224)
+        x = transforms.translate(x)
+        #x = gauss(x, min_sigma=0.8, max_sigma=1.2)
+        return x
+
+    # returns the loss for the image
+    def loss_func(model, x):
+        predictions = model.forward(x, distribution=distribution, n=BATCH_SIZE)
+        return F.mse_loss(predictions, binary.target(model.target)), predictions.cpu().data.numpy().round(2)
+
+
     model.set_target(target)
     opt = torch.optim.Adam([perturbation], lr=0.1)
 
     losses = []
     preds = []
     for i in range(0, max_iter):
+
         def closure():
             opt.zero_grad()
 
@@ -100,7 +69,7 @@ def encode_binary(image, target=binary.parse("1100100110"), max_iter=1, verbose=
             perturbation_zc = (perturbation - perturbation.mean())/(perturbation.std()) * EPSILON
             changed_image = (image + perturbation_zc).clamp(min=0.1, max=0.99)
             
-            loss, predictions = model.loss(changed_image)
+            loss, predictions = loss_func(model, changed_image)
             loss.backward()
 
             preds.append(predictions)
@@ -148,6 +117,7 @@ def encode_binary(image, target=binary.parse("1100100110"), max_iter=1, verbose=
     return im.numpy(changed_image)
 
 if __name__ == "__main__":
-    target = binary.random(n=32)
+    target = binary.random(n=TARGET_SIZE)
+    model = DecodingNet()
     print("Target: ", binary.str(target))
-    encode_binary(im.load("images/cat.jpg"), target=target, verbose=True)
+    encode_binary(im.load("images/cat.jpg"), model, target=target, verbose=True)
