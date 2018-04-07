@@ -27,19 +27,26 @@ optimizer = torch.optim.Adam(model.parameters(), lr=0.05)
 
 def loss(model, image_batch):
 	features = torch.cat([model(x).unsqueeze(0) for x in image_batch], dim=0)
+	print (features.size())
 	correlations = corrcoef(features.t())
-	return correlations.sum()
+	correlations = torch.pow(correlations, 2)
+	correlations = correlations.clamp(min=0.3, max=1.0)
+	print (correlations)
+	return correlations.mean()
 
 def data_generator():
 	for image in glob.glob("/data/cats/*.jpg"):
 		yield im.torch(im.load(image))
 
-for image_batch in batched(data_generator(), batch_size=32):
+for epochs in range(0, 500):
+	for i, image_batch in enumerate(batched(data_generator(), batch_size=32)):
 
-	loss = loss(model, image_batch)
-	print ("Loss: ", loss.data)
-	optimizer.zero_grad()
-	loss.backward()
-	optimizer.step()
+		error = loss(model, image_batch)
+		print ("Epoch {0}, Batch {1}, Loss {2:0.5f}".format(epochs, 
+			i, error.data.cpu().numpy().mean()))
+		optimizer.zero_grad()
+		error.backward()
+		optimizer.step()
 
-
+	model.save("/output/decorrelation.pth")
+model.save("/output/decorrelation.pth")

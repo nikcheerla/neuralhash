@@ -52,8 +52,8 @@ class DecodingNet(nn.Module):
             return predictions.mean(dim=0), predictions.std(dim=0)
         return predictions.mean(dim=0)
 
-    def load(file_path):
+    def load(self, file_path):
         self.load_state_dict(torch.load(file_path))
 
-    def save(file_path):
+    def save(self, file_path):
         torch.save(self.state_dict(), file_path)
