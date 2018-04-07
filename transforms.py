@@ -10,9 +10,7 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 from torch.autograd import Variable
 
-USE_CUDA = torch.cuda.is_available()
-
-from utils import im, binary
+from utils import *
 
 import IPython
 

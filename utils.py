@@ -14,6 +14,7 @@ import random
 
 USE_CUDA = torch.cuda.is_available()
 IMAGE_MAX = 255.0
+TARGET_SIZE = 32
 
 def batch(datagen, batch_size=32):
 	arr = []

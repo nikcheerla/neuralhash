@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 import IPython
 
 
-USE_CUDA = torch.cuda.is_available()
 EPSILON = 3e-2
 MIN_LOSS = 7e-2
 BATCH_SIZE = 64
@@ -54,7 +53,7 @@ class DecodingNet(nn.Module):
 				x = resize(x, rand_val=False, resize_val=224)
 				return x
 
-			
+
 		images = x
 		predictions = self.features(images) + 0.5
 

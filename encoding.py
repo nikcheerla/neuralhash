@@ -14,7 +14,7 @@ import torch.optim as optim
 from torch.autograd import Variable
 
 from torchvision import models
-from utils import im, binary
+from utils import *
 
 from skimage import filters
 from skimage.morphology import binary_dilation
@@ -24,9 +24,6 @@ import IPython
 import transforms
 #from transforms import rotate, scale, flip, resize, gauss, noise, resize_rect, translate
 
-torch.manual_seed(1234)
-USE_CUDA = torch.cuda.is_available()
-if USE_CUDA: torch.cuda.manual_seed(1234)
 EPSILON = 3e-2
 MIN_LOSS = 7e-2
 BATCH_SIZE = 12
