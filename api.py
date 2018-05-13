@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 from utils import im, binary
-from encoding import model, encode_binary
+from encoding import encode_binary
 
 import IPython
 

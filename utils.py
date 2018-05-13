@@ -14,7 +14,7 @@ import random
 
 USE_CUDA = torch.cuda.is_available()
 IMAGE_MAX = 255.0
-TARGET_SIZE = 3
+TARGET_SIZE = 32
 
 
 def corrcoef(x):

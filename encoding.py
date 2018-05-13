@@ -29,7 +29,7 @@ MIN_LOSS = 7e-2
 BATCH_SIZE = 12
 
 
-def encode_binary(image, model, target, max_iter=21, verbose=False):
+def encode_binary(image, model, target, max_iter=2000, verbose=False):
 
     image = im.torch(image)
     perturbation_old = None
@@ -39,23 +39,19 @@ def encode_binary(image, model, target, max_iter=21, verbose=False):
 
     # returns an image after a series of transformations
     def distribution(x):
-        
         x = transforms.resize_rect(x)
         x = transforms.rotate(transforms.scale(x), max_angle=90)
-        
-        #if random.random() < 0.2: x = flip(x)
         x = transforms.resize(x, rand_val=False, resize_val=224)
         x = transforms.translate(x)
-        #x = gauss(x, min_sigma=0.8, max_sigma=1.2)
+        x = transforms.gauss(x, min_sigma=0.8, max_sigma=1.2)
         return x
 
     # returns the loss for the image
     def loss_func(model, x):
         predictions = model.forward(x, distribution=distribution, n=BATCH_SIZE)
-        return F.mse_loss(predictions, binary.target(model.target)), predictions.cpu().data.numpy().round(2)
+        return F.mse_loss(predictions, binary.target(target)), predictions.cpu().data.numpy().round(2)
 
 
-    model.set_target(target)
     opt = torch.optim.Adam([perturbation], lr=0.1)
 
     losses = []
@@ -105,14 +101,14 @@ def encode_binary(image, model, target, max_iter=21, verbose=False):
     im.save(im.numpy(perturbation), file="/output/perturbation.jpg")
     im.save(im.numpy(changed_image), file="/output/changed_image.jpg")
     
-    if verbose:
-        #print("pert max : ", perturbation_zc.data.cpu().numpy().max(), "\tmin: ", perturbation_zc.data.cpu().numpy().min())
-        plt.plot(np.array(preds)); plt.savefig("/output/preds.jpg"); plt.cla()
-        plt.plot(losses); plt.savefig("/output/loss.jpg"); plt.cla()
-        #print ("Original predictions: ", binary.get(model(image)))
-        #print ("Perturbation: ", binary.get(model(perturbation_zc)))
-        print ("Modified prediction: ", binary.get(model(changed_image)))
-        #print ("Final predictions: ", preds[-1])
+    # if verbose:
+    #     #print("pert max : ", perturbation_zc.data.cpu().numpy().max(), "\tmin: ", perturbation_zc.data.cpu().numpy().min())
+    #     plt.plot(np.array(preds)); plt.savefig("/output/preds.jpg"); plt.cla()
+    #     plt.plot(losses); plt.savefig("/output/loss.jpg"); plt.cla()
+    #     #print ("Original predictions: ", binary.get(model(image)))
+    #     #print ("Perturbation: ", binary.get(model(perturbation_zc)))
+    #     print ("Modified prediction: ", binary.get(model(changed_image)))
+    #     #print ("Final predictions: ", preds[-1])
 
     return im.numpy(changed_image)
 

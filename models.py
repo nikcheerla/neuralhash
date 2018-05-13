@@ -30,7 +30,7 @@ class DecodingNet(nn.Module):
     def __init__(self):
         super(DecodingNet, self).__init__()
 
-        self.features = models.vgg11(pretrained=True)
+        self.features = models.vgg11(pretrained=False)
         self.features.classifier = nn.Sequential(
             nn.Linear(25088, TARGET_SIZE))
 
@@ -57,3 +57,5 @@ class DecodingNet(nn.Module):
 
     def save(self, file_path):
         torch.save(self.state_dict(), file_path)
+
+
