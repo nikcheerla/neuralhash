@@ -43,7 +43,7 @@ def encode_binary(image, model, target, max_iter=150, verbose=False):
         # x = transforms.rotate(transforms.scale(x), max_angle=90)
         # x = transforms.gauss(x, min_sigma=0.8, max_sigma=1.2)
         # x = transforms.translate(x)
-        # x = transforms.resize(x, rand_val=False, resize_val=224)
+        x = transforms.resize(x, rand_val=False, resize_val=224)
         return x
 
     # returns the loss for the image
