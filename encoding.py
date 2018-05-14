@@ -24,12 +24,12 @@ import IPython
 import transforms
 #from transforms import rotate, scale, flip, resize, gauss, noise, resize_rect, translate
 
-EPSILON = 1e-2
+EPSILON = 2e-2
 MIN_LOSS = 7e-2
 BATCH_SIZE = 64
 
 
-def encode_binary(image, model, target, max_iter=2000, verbose=False):
+def encode_binary(image, model, target, max_iter=200, verbose=False):
 
     image = im.torch(image)
     perturbation_old = None
@@ -40,16 +40,16 @@ def encode_binary(image, model, target, max_iter=2000, verbose=False):
     # returns an image after a series of transformations
     def distribution(x):
         # x = transforms.resize_rect(x)
-        x = transforms.rotate(transforms.scale(x), max_angle=60)
+        x = transforms.rotate(transforms.scale(x), max_angle=90)
         x = transforms.gauss(x, min_sigma=0.8, max_sigma=1.2)
-        x = transforms.resize(x, rand_val=False, resize_val=224)
         x = transforms.translate(x)
+        x = transforms.resize(x, rand_val=False, resize_val=224)
         return x
 
     # returns the loss for the image
     def loss_func(model, x):
-        predictions = model.forward(x, distribution=distribution, n=BATCH_SIZE)
-        return F.mse_loss(predictions, binary.target(target)), predictions.cpu().data.numpy().round(2)
+        predictions, std = model.forward(x, distribution=distribution, n=BATCH_SIZE, return_variance=True)
+        return F.mse_loss(predictions, binary.target(target)) + std.mean(), predictions.cpu().data.numpy().round(2)
 
 
     opt = torch.optim.Adam([perturbation], lr=1e-1)

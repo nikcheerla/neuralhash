@@ -113,6 +113,8 @@ class binary(object):
 
 	@staticmethod
 	def distance(code1, code2):
+		code1 = np.array(code1).clip(min=0, max=1).round()
+		code2 = np.array(code2).clip(min=0, max=1).round()
 		num = 0
 		for i in range(len(code1)):
 			if code1[i] != code2[i]: num += 1
