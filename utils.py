@@ -101,7 +101,7 @@ class binary(object):
 
 	@staticmethod
 	def redundant(values, n=3):
-		return list(values)*3
+		return list(values)*n
 
 	@staticmethod
 	def consensus(values, n=3):

@@ -58,4 +58,3 @@ class DecodingNet(nn.Module):
     def save(self, file_path):
         torch.save(self.state_dict(), file_path)
 
-
