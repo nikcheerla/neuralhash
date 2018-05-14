@@ -8,19 +8,28 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
-from torchvision import transforms
 from utils import im, binary
+import transforms
 
 from encoding import encode_binary
-from transforms import rotate, scale
 from models import DecodingNet
+
+
+# returns an image after a series of transformations
+def p(x):
+    # x = transforms.resize_rect(x)
+    x = transforms.rotate(transforms.scale(x), max_angle=90)
+    x = transforms.gauss(x, min_sigma=0.8, max_sigma=1.2)
+    x = transforms.translate(x)
+    x = transforms.resize(x, rand_val=False, resize_val=224)
+    return x
 
 def sweep(image, output_file, min_val, max_val, step, transform, code, model):
     val = min_val
     res = []
     while val <= max_val:
         transformed = transform(image, val)
-        preds = model.forward(transformed).data.cpu().numpy()
+        preds = model.forward(transformed, distribution=p, n=96).data.cpu().numpy()
         mse_loss = binary.mse_dist(preds, code)
         res.append((val, mse_loss))
         print("mse: ", np.round(mse_loss, 4))
@@ -42,9 +51,9 @@ def test_transforms():
         code = binary.get(model.forward(im.torch(encoded_img)))
 
         sweep(im.torch(encoded_img), image_file + "_rotate.jpg", -1.5, 1.5, 0.1, 
-            lambda x, val: rotate(x, rand_val=False, theta=val), code, model)
+            lambda x, val: transforms.rotate(x, rand_val=False, theta=val), code, model)
         sweep(im.torch(encoded_img), image_file + "_scale.jpg", 0.5, 1.5, 0.05, 
-            lambda x, val: scale(x, rand_val=False, scale_val=val), code, model)
+            lambda x, val: transforms.scale(x, rand_val=False, scale_val=val), code, model)
 
 def compare_image(original_file, transformed_file):
     original_img = im.load(original_file)

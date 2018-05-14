@@ -13,7 +13,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 
-from models import DecodingNet, DecodingGAN
+from models import DecodingNet
 from torchvision import models
 from utils import *
 
@@ -25,7 +25,7 @@ import transforms
 #from transforms import rotate, scale, flip, resize, gauss, noise, resize_rect, translate
 
 EPSILON = 2e-2
-MIN_LOSS = 7e-2
+MIN_LOSS = 2e-2
 BATCH_SIZE = 64
 
 
@@ -102,8 +102,11 @@ def encode_binary(image, model, target, max_iter=200, verbose=False):
     im.save(im.numpy(changed_image), file="/output/changed_image.jpg")
     
     if verbose:
+        #print("pert max : ", perturbation_zc.data.cpu().numpy().max(), "\tmin: ", perturbation_zc.data.cpu().numpy().min())
         plt.plot(np.array(preds)); plt.savefig("/output/preds.jpg"); plt.cla()
         plt.plot(losses); plt.savefig("/output/loss.jpg"); plt.cla()
+        #print ("Original predictions: ", binary.get(model(image)))
+        #print ("Perturbation: ", binary.get(model(perturbation_zc)))
         print ("Modified prediction: ", binary.get(model(changed_image)))
         #print ("Final predictions: ", preds[-1])
 
@@ -111,6 +114,6 @@ def encode_binary(image, model, target, max_iter=200, verbose=False):
 
 if __name__ == "__main__":
     target = binary.random(n=TARGET_SIZE)
-    model = DecodingGAN()
+    model = DecodingNet()
     print("Target: ", binary.str(target))
     encode_binary(im.load("images/car.jpg"), model, target=target, verbose=True)
