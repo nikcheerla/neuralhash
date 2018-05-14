@@ -30,7 +30,7 @@ class DecodingNet(nn.Module):
     def __init__(self):
         super(DecodingNet, self).__init__()
 
-        self.features = models.vgg11(pretrained=False)
+        self.features = models.vgg11(pretrained=True)
         self.features.classifier = nn.Sequential(
             nn.Linear(25088, TARGET_SIZE))
 

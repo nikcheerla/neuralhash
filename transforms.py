@@ -69,15 +69,15 @@ def gauss(x, min_sigma=1.1, max_sigma=1.8, rand_val=True, sigma=1):
     kernel[2, 2] = 1
     if rand_val: sigma = random.uniform(min_sigma, max_sigma)
     kernel = filters.gaussian_filter(kernel, sigma=sigma)
-    gaussian = torch.Tensor(kernel).view(1, 1, 5, 5).cuda()
-    gaussian = gaussian.repeat(3, 3, 1, 1).cuda()
-
+    gaussian = torch.Tensor(kernel).view(1, 1, 5, 5)
+    gaussian = gaussian.repeat(3, 3, 1, 1)
+    if USE_CUDA: gaussian.cuda()
     for i in range(0, 3): 
         for j in range(i+1, 3): 
             gaussian[i, j] = 0
             gaussian[j, i] = 0
 
-    img = F.conv2d(x.unsqueeze(0), weight=(Variable(gaussian)).cuda(), padding=2).cuda()[0]
+    img = F.conv2d(x.unsqueeze(0), weight=(Variable(gaussian)).cuda(), padding=2)[0]
     return img
 
 def noise(x, max_noise_val=0.02):
