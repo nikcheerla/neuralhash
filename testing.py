@@ -11,15 +11,16 @@ import numpy as np
 from torchvision import transforms
 from utils import im, binary
 
-from api import encode, decode, decode_raw
+from encoding import encode_binary
 from transforms import rotate, scale
+from models import DecodingNet
 
-def sweep(image, output_file, min_val, max_val, step, transform, code):
+def sweep(image, output_file, min_val, max_val, step, transform, code, model):
     val = min_val
     res = []
     while val <= max_val:
         transformed = transform(image, val)
-        preds = decode_raw(transformed)
+        preds = model.forward(transformed).data.cpu().numpy()
         mse_loss = binary.mse_dist(preds, code)
         res.append((val, mse_loss))
         print("mse: ", np.round(mse_loss, 4))
@@ -29,18 +30,21 @@ def sweep(image, output_file, min_val, max_val, step, transform, code):
     plt.plot(x, y); plt.savefig("/output/" + output_file); plt.cla()
 
 def test_transforms():
-    images = ["cat.jpg"]
+    images = ["car.jpg"]
+    model = DecodingNet()
 
     for image_file in images:
         image = im.load("images/" + image_file)
         if image is None: continue
         code = binary.random(n=32)
 
-        encoded_img = encode(image, code, verbose=True)
-        code = decode(encoded_img)
+        encoded_img = encode_binary(image, model, target=code, verbose=True)
+        code = binary.get(model.forward(im.torch(encoded_img)))
 
-        sweep(im.torch(encoded_img), image_file + "_rotate.jpg", -1.5, 1.5, 0.2, lambda x, val: rotate(x, rand_val=False, theta=val), code)
-        sweep(image, image_file + "_scale.jpg", -1.5, 1.5, 0.2, lambda x, val: scale(x, rand_val=False, scale_val=val), code)
+        sweep(im.torch(encoded_img), image_file + "_rotate.jpg", -1.5, 1.5, 0.1, 
+            lambda x, val: rotate(x, rand_val=False, theta=val), code, model)
+        sweep(im.torch(encoded_img), image_file + "_scale.jpg", -1.5, 1.5, 0.1, 
+            lambda x, val: scale(x, rand_val=False, scale_val=val), code, model)
 
 def compare_image(original_file, transformed_file):
     original_img = im.load(original_file)
