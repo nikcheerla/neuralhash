@@ -43,7 +43,7 @@ def test_transforms():
 
         sweep(im.torch(encoded_img), image_file + "_rotate.jpg", -1.5, 1.5, 0.1, 
             lambda x, val: rotate(x, rand_val=False, theta=val), code, model)
-        sweep(im.torch(encoded_img), image_file + "_scale.jpg", -1.5, 1.5, 0.1, 
+        sweep(im.torch(encoded_img), image_file + "_scale.jpg", 0.5, 1.5, 0.05, 
             lambda x, val: scale(x, rand_val=False, scale_val=val), code, model)
 
 def compare_image(original_file, transformed_file):
