@@ -58,3 +58,52 @@ class DecodingNet(nn.Module):
     def save(self, file_path):
         torch.save(self.state_dict(), file_path)
 
+
+class DecodingGAN(nn.Module):
+    def __init__(self):
+        super(DecodingGAN, self).__init__()
+
+        ngf, ndf, nc = 64, 64, 3
+        self.main = nn.Sequential(
+            # input is (nc) x 64 x 64
+            nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+            # state size. (ndf) x 32 x 32
+            nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ndf * 2),
+            nn.LeakyReLU(0.2, inplace=True),
+            # state size. (ndf*2) x 16 x 16
+            nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ndf * 4),
+            nn.LeakyReLU(0.2, inplace=True),
+            # state size. (ndf*4) x 8 x 8
+            nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ndf * 8),
+            nn.LeakyReLU(0.2, inplace=True),
+            # state size. (ndf*8) x 4 x 4
+            nn.Conv2d(ndf * 8, 1, 4, 1, 0, bias=False),
+            nn.Sigmoid()
+        )
+        self.load_state_dict(torch.load("/model/netD_epoch_299.pth"))
+        self.classifier = [nn.Linear(64*64, TARGET_SIZE)]
+
+        if USE_CUDA: self.cuda()
+
+    def forward(self, x):
+
+        orig_shape = x.size()
+        x = x.view(x.size(0), -1)
+        x = (x - x.mean(dim=1))/x.std(dim=1)
+        x = 0.5*x + 0.5
+        x = x.view(*orig_shape)
+
+        images = torch.cat([distribution(x).unsqueeze(0) for i in range(0, n)], dim=0)
+
+        features = self.main(x).view(x.size(0), -1)
+        predictions = self.classifier[0](x) + 0.5
+
+        if return_variance:
+            return predictions.mean(dim=0), predictions.std(dim=0)
+
+        return predictions.mean(dim=0)
+
