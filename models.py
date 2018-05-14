@@ -50,7 +50,10 @@ class DecodingNet(nn.Module):
         predictions = (self.features(images)) + 0.5
         if return_variance:
             return predictions.mean(dim=0), predictions.std(dim=0)
-        return predictions.mean(dim=0)
+        return predictions
+
+    def predictions(self, x, verbose=False, distribution=identity, n=1):
+        return self.forward(x, verbose, distribution, n).mean(dim=0)
 
     def load(self, file_path):
         self.load_state_dict(torch.load(file_path))

@@ -29,7 +29,7 @@ MIN_LOSS = 5e-2
 BATCH_SIZE = 64
 
 
-def encode_binary(image, model, target, max_iter=150, verbose=False):
+def encode_binary(image, model, target, max_iter=200, verbose=False):
 
     image = im.torch(image)
     perturbation_old = None
@@ -39,17 +39,24 @@ def encode_binary(image, model, target, max_iter=150, verbose=False):
 
     # returns an image after a series of transformations
     def distribution(x):
-        # x = transforms.resize_rect(x)
-        # x = transforms.rotate(transforms.scale(x), max_angle=90)
-        # x = transforms.gauss(x, min_sigma=0.8, max_sigma=1.2)
-        # x = transforms.translate(x)
+        x = transforms.resize_rect(x)
+        x = transforms.rotate(transforms.scale(x), max_angle=90)
+        x = transforms.gauss(x, min_sigma=0.8, max_sigma=1.2)
+        x = transforms.translate(x)
         x = transforms.resize(x, rand_val=False, resize_val=224)
         return x
 
     # returns the loss for the image
     def loss_func(model, x):
-        predictions = model.forward(x, distribution=distribution, n=BATCH_SIZE, return_variance=False)
-        return F.mse_loss(predictions, binary.target(target)), predictions.cpu().data.numpy().round(2)
+        predictions = model.forward(x, distribution=distribution, n=BATCH_SIZE)
+        # loss = F.binary_cross_entropy_with_logits(predictions, binary.target(target))
+        loss = ((predictions - binary.target(target))**2).mean()
+        # loss = 0
+        # for pred in predictions:
+        #     loss += F.binary_cross_entropy_with_logits(pred, binary.target(target))
+        # loss /= BATCH_SIZE
+        avg_pred = predictions.mean(dim = 0).cpu().data.numpy().round(2)
+        return loss, avg_pred 
 
 
     opt = torch.optim.Adam([perturbation], lr=1e-1)
