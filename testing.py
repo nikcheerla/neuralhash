@@ -18,9 +18,9 @@ from models import DecodingNet
 # returns an image after a series of transformations
 def p(x):
     # x = transforms.resize_rect(x)
-    x = transforms.rotate(transforms.scale(x), max_angle=90)
-    x = transforms.gauss(x, min_sigma=0.8, max_sigma=1.2)
-    x = transforms.translate(x)
+    x = transforms.rotate(transforms.scale(x), max_angle=30)
+    # x = transforms.gauss(x, min_sigma=0.8, max_sigma=1.2)
+    # x = transforms.translate(x)
     x = transforms.resize(x, rand_val=False, resize_val=224)
     return x
 
