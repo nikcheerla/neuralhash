@@ -87,7 +87,9 @@ class binary(object):
 
 	@staticmethod
 	def get(predictions):
-		return list(predictions.data.cpu().numpy().clip(min=0, max=1).round().astype(int))
+		if predictions is Variable:
+			predictions = predictions.data.cpu().numpy()
+		return list(predictions.clip(min=0, max=1).round().astype(int))
 
 	@staticmethod
 	def str(vals):

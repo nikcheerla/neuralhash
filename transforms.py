@@ -16,6 +16,17 @@ import IPython
 
 from scipy.ndimage import filters
 
+def identity(x):
+    x = resize(x, rand_val=False, resize_val=224)
+    return x
+
+def resize(x, min_val=100, max_val=300, rand_val=True, resize_val=224):
+    if rand_val: resize_val = random.uniform(min_val, max_val)
+    grid = F.affine_grid(torch.eye(3).unsqueeze(0)[:, 0:2], size=torch.Size((1, 2, int(resize_val), int(resize_val))))
+    if USE_CUDA: grid = grid.cuda()
+    img = F.grid_sample(x.unsqueeze(0), grid)[0]
+    return img
+
 def resize_rect(x, x_val_range=0.3, y_val_range=0.3):
     x_scale = random.uniform(1-x_val_range, 1+x_val_range)
     y_scale = random.uniform(1-y_val_range, 1+y_val_range)
@@ -30,13 +41,6 @@ def color_jitter(x, jitter=0.1):
     R, G, B = (random.uniform(1-jitter, 1+jitter) for i in range(0, 3))
     x = torch.cat([x[0].unsqueeze(0)*R, x[1].unsqueeze(0)*G, x[2].unsqueeze(0)*B], dim=0)
     return x
-
-def resize(x, min_val=100, max_val=300, rand_val=True, resize_val=224):
-    if rand_val: resize_val = random.uniform(min_val, max_val)
-    grid = F.affine_grid(torch.eye(3).unsqueeze(0)[:, 0:2], size=torch.Size((1, 2, int(resize_val), int(resize_val))))
-    if USE_CUDA: grid = grid.cuda()
-    img = F.grid_sample(x.unsqueeze(0), grid)[0]
-    return img
 
 def scale(x, min_val=0.3, max_val=1.7, rand_val=True, scale_val=1):
     if rand_val: scale_val = random.uniform(min_val, max_val)
@@ -72,12 +76,15 @@ def gauss(x, min_sigma=1.1, max_sigma=1.8, rand_val=True, sigma=1):
     gaussian = torch.Tensor(kernel).view(1, 1, 5, 5)
     gaussian = gaussian.repeat(3, 3, 1, 1)
     if USE_CUDA: gaussian.cuda()
-    for i in range(0, 3): 
-        for j in range(i+1, 3): 
+    for i in range(0, 3):
+        for j in range(i+1, 3):
             gaussian[i, j] = 0
             gaussian[j, i] = 0
 
-    img = F.conv2d(x.unsqueeze(0), weight=(Variable(gaussian)).cuda(), padding=2)[0]
+    gaussian = Variable(gaussian)
+    if USE_CUDA: gaussian = gaussian.cuda()
+
+    img = F.conv2d(x.unsqueeze(0), weight=gaussian, padding=2)[0]
     return img
 
 def noise(x, max_noise_val=0.02):

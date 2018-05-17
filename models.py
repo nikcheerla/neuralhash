@@ -19,10 +19,6 @@ import IPython
 
 import transforms
 
-def identity(x):
-    x = transforms.resize(x, rand_val=False, resize_val=224)
-    return x
-
 """Decoding network that tries to predict a
 binary value of size target_size """
 class DecodingNet(nn.Module):
@@ -38,7 +34,7 @@ class DecodingNet(nn.Module):
 
         if USE_CUDA: self.cuda()
 
-    def forward(self, x, verbose=False, distribution=identity, 
+    def forward(self, x, verbose=False, distribution=transforms.identity, 
                     n=1, return_variance=False):
 
         # make sure to center the image and divide by standard deviation
@@ -59,51 +55,59 @@ class DecodingNet(nn.Module):
         torch.save(self.state_dict(), file_path)
 
 
-class DecodingGAN(nn.Module):
-    def __init__(self):
-        super(DecodingGAN, self).__init__()
 
-        ngf, ndf, nc = 64, 64, 3
-        self.main = nn.Sequential(
-            # input is (nc) x 64 x 64
-            nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf) x 32 x 32
-            nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ndf * 2),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf*2) x 16 x 16
-            nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ndf * 4),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf*4) x 8 x 8
-            nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ndf * 8),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf*8) x 4 x 4
-            nn.Conv2d(ndf * 8, 1, 4, 1, 0, bias=False),
-            nn.Sigmoid()
-        )
-        self.load_state_dict(torch.load("/model/netD_epoch_299.pth"))
-        self.classifier = [nn.Linear(64*64, TARGET_SIZE)]
+
+
+
+"""More complex network that tries to predict a
+binary value of size target_size """
+class DecodingDNN(nn.Module):
+
+    def __init__(self):
+        super(DecodingDNN, self).__init__()
+
+        self.features = models.resnet101(pretrained=True)
+        self.classifier = nn.Linear(256*4*4, TARGET_SIZE*2)
+        
+        mask = Variable(torch.bernoulli(torch.ones(TARGET_SIZE*2, 256*4*4)*0.03))/0.03
+        self.classifier.weight.data = self.classifier.weight.data*mask.data
+        self.features.eval()
 
         if USE_CUDA: self.cuda()
 
-    def forward(self, x):
+    def forward(self, x, verbose=False, distribution=transforms.identity, 
+                    n=1, return_variance=False):
 
-        orig_shape = x.size()
+        # make sure to center the image and divide by standard deviation
+        x = torch.cat([((x[0]-0.485)/(0.229)).unsqueeze(0),
+            ((x[1]-0.456)/(0.224)).unsqueeze(0),
+            ((x[2]-0.406)/(0.225)).unsqueeze(0)], dim=0)
+
+        x = torch.cat([distribution(x).unsqueeze(0) for i in range(0, n)], dim=0)
+        for layer in list(self.features._modules.values())[0:6]:
+            x = layer(x)
+
+        module = list(self.features._modules.values())[6]
+        for layer in list(module._modules.values())[0:5]:
+            x = layer(x)
+
+        x = F.max_pool2d(x, x.size(2)//4) + F.avg_pool2d(x, x.size(2)//4)
         x = x.view(x.size(0), -1)
-        x = (x - x.mean(dim=1))/x.std(dim=1)
-        x = 0.5*x + 0.5
-        x = x.view(*orig_shape)
+        x = (x - x.mean(dim=1, keepdim=True))/(x.std(dim=1, keepdim=True))
+        x = self.classifier(x).view(x.size(0), TARGET_SIZE, 2)
+        x = x.mean(dim=0)
+        predictions = F.softmax(x)[:, 0]
 
-        images = torch.cat([distribution(x).unsqueeze(0) for i in range(0, n)], dim=0)
+        return predictions
 
-        features = self.main(x).view(x.size(0), -1)
-        predictions = self.classifier[0](x) + 0.5
+    def load(self, file_path):
+        self.load_state_dict(torch.load(file_path))
 
-        if return_variance:
-            return predictions.mean(dim=0), predictions.std(dim=0)
+    def save(self, file_path):
+        torch.save(self.state_dict(), file_path)
 
-        return predictions.mean(dim=0)
 
+if __name__ == "__main__":
+
+    model = DecodingDNN()
+    model.forward(Variable(torch.randn(3, 224, 224)))
