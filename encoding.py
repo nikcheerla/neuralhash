@@ -22,7 +22,6 @@ from skimage.morphology import binary_dilation
 import IPython
 
 import transforms
-#from transforms import rotate, scale, flip, resize, gauss, noise, resize_rect, translate
 
 EPSILON = 2e-2
 MIN_LOSS = 3e-3
@@ -49,8 +48,9 @@ def encode_binary(image, model, target, max_iter=400, verbose=False):
 
     # returns the loss for the image
     def loss_func(model, x):
+
         predictions = model.forward(x, distribution=p, n=BATCH_SIZE, return_variance=False)
-        return F.binary_cross_entropy(predictions, binary.target(target)), \
+        return F.nll_loss(predictions, binary.target(target)), \
                     predictions.cpu().data.numpy().round(2)
 
     opt = torch.optim.Adam([perturbation], lr=2e-1)
@@ -85,10 +85,6 @@ def encode_binary(image, model, target, max_iter=400, verbose=False):
 
             if verbose:
                 print ("Loss: ", np.mean(losses[-20:]))
-                #print ("Predictions: ", np.round(, 2))
-                #print ("Modified prediction: ", binary.str(binary.get(model(changed_image))))
-                
-                #save(image, file="images/image.jpg")
                 im.save(im.numpy(perturbation), file="/output/perturbation.jpg")
                 im.save(im.numpy(changed_image), file="/output/changed_image.jpg")
 
@@ -111,3 +107,4 @@ if __name__ == "__main__":
     model = DecodingNet()
     print("Target: ", binary.str(target))
     encode_binary(im.load("images/car.jpg"), model, target=target, verbose=True)
+
