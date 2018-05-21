@@ -27,8 +27,11 @@ class DecodingNet(nn.Module):
         super(DecodingNet, self).__init__()
 
         self.features = models.vgg11(pretrained=True)
-        self.features.classifier = nn.Sequential(
-            nn.Linear(25088, TARGET_SIZE))
+        self.features.classifier = nn.Linear(25088, TARGET_SIZE*2)
+
+        mask = Variable(torch.bernoulli(torch.ones(TARGET_SIZE*2, 25088)*0.05))/0.05
+        self.features.classifier.weight.data = \
+            self.features.classifier.weight.data*mask.data
 
         self.features.eval()
 
@@ -43,9 +46,11 @@ class DecodingNet(nn.Module):
             ((x[2]-0.406)/(0.225)).unsqueeze(0)], dim=0)
 
         images = torch.cat([distribution(x).unsqueeze(0) for i in range(0, n)], dim=0)
-        predictions = (self.features(images)) + 0.5
-        if return_variance:
-            return predictions.mean(dim=0), predictions.std(dim=0)
+
+        x = self.features(images).view(images.size(0), TARGET_SIZE, 2)
+        x = x.mean(dim=0)
+        predictions = F.softmax(x)[:, 0]
+
         return predictions
 
     def load(self, file_path):
@@ -96,7 +101,7 @@ class DecodingDNN(nn.Module):
         x = (x - x.mean(dim=1, keepdim=True))/(x.std(dim=1, keepdim=True))
         x = self.classifier(x).view(x.size(0), TARGET_SIZE, 2)
         x = x.mean(dim=0)
-        predictions = F.log_softmax(x)[:, 0]
+        predictions = F.softmax(x)[:, 0]
 
         return predictions
 
@@ -109,5 +114,5 @@ class DecodingDNN(nn.Module):
 
 if __name__ == "__main__":
 
-    model = DecodingDNN()
+    model = DecodingNet()
     model.forward(Variable(torch.randn(3, 224, 224)))

@@ -50,7 +50,7 @@ def encode_binary(image, model, target, max_iter=400, verbose=False):
     def loss_func(model, x):
 
         predictions = model.forward(x, distribution=p, n=BATCH_SIZE, return_variance=False)
-        return F.nll_loss(predictions, binary.target(target)), \
+        return F.mse_loss(predictions, binary.target(target)), \
                     predictions.cpu().data.numpy().round(2)
 
     opt = torch.optim.Adam([perturbation], lr=2e-1)

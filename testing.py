@@ -34,7 +34,7 @@ def sweep(image, output_file, min_val, max_val, step, transform, code, model):
 
         res.append((val, binary_loss))
 
-        print("mse: ", np.round(mse_loss, 4))        
+        print("mse: ", np.round(mse_loss, 4))
         val += step
 
     x, y = zip(*res)
@@ -46,7 +46,7 @@ def sweep(image, output_file, min_val, max_val, step, transform, code, model):
 
 def test_transforms():
     images = ["car.jpg"]
-    model = DecodingDNN()
+    model = DecodingNet()
 
     for image_file in images:
         image = im.load("images/" + image_file)
