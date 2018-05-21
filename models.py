@@ -23,6 +23,19 @@ def identity(x):
     x = transforms.resize(x, rand_val=False, resize_val=224)
     return x
 
+class GramMatrix(nn.Module):
+    def forward(self, input):
+        N, C, H, W = input.size()
+
+        features = input.view(N, C, H*W)  # resise F_XL into \hat F_XL
+
+        G = torch.bmm(features, features.t())  # compute the gram product
+
+        # we 'normalize' the values of the gram matrix
+        # by dividing by the number of element in each feature maps.
+        print(G.size)
+        return G.div(N * C * H * W)
+
 """Decoding network that tries to predict a
 binary value of size target_size """
 class DecodingNet(nn.Module):
@@ -32,7 +45,11 @@ class DecodingNet(nn.Module):
 
         self.features = models.vgg11(pretrained=True)
         self.features.classifier = nn.Sequential(
-            nn.Linear(25088, TARGET_SIZE))
+            GramMatrix(),
+            nn.Linear(262144, TARGET_SIZE)
+        )
+        # mask = Variable(torch.bernoulli(torch.ones(TARGET_SIZE, 25088)*0.1))/0.1
+        # self.features.classifier.weight.data = self.features.classifier.weight.data*mask.data
 
         self.features.eval()
 

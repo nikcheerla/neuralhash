@@ -49,8 +49,9 @@ def encode_binary(image, model, target, max_iter=200, verbose=False):
     # returns the loss for the image
     def loss_func(model, x):
         predictions = model.forward(x, distribution=distribution, n=BATCH_SIZE)
-        # loss = F.binary_cross_entropy_with_logits(predictions, binary.target(target))
-        loss = ((predictions - binary.target(target))**2).mean()
+        # loss = F.binary_cross_entropy_with_logits(predictions.mean(dim=0), binary.target(target))
+        # loss = ((predictions - binary.target(target))**2).mean()
+        loss = F.mse_loss(predictions.mean(dim=0), binary.target(target))
         # loss = 0
         # for pred in predictions:
         #     loss += F.binary_cross_entropy_with_logits(pred, binary.target(target))
