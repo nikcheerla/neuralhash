@@ -1,3 +1,4 @@
+#utils.py
 
 import numpy as np
 import random, sys, os
@@ -139,4 +140,3 @@ if __name__ == "__main__":
 
 	print (binary.consensus(binary.redundant([1, 1, 0, 1, 0, 0])))
 	print (binary("111011"))
-
