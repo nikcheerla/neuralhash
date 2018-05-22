@@ -1,3 +1,4 @@
+#utils.py
 
 import numpy as np
 import random, sys, os
@@ -87,7 +88,9 @@ class binary(object):
 
 	@staticmethod
 	def get(predictions):
-		return list(predictions.data.cpu().numpy().clip(min=0, max=1).round().astype(int))
+		if predictions is Variable:
+			predictions = predictions.data.cpu().numpy()
+		return list(predictions.clip(min=0, max=1).round().astype(int))
 
 	@staticmethod
 	def str(vals):
@@ -137,4 +140,3 @@ if __name__ == "__main__":
 
 	print (binary.consensus(binary.redundant([1, 1, 0, 1, 0, 0])))
 	print (binary("111011"))
-

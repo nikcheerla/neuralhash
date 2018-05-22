@@ -8,17 +8,16 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
-from utils import im, binary
+from utils import *
 import transforms
 
 from encoding import encode_binary
-from models import DecodingNet
-
+from models import DecodingNet, DecodingDNN
 
 # returns an image after a series of transformations
 def p(x):
     x = transforms.resize_rect(x)
-    x = transforms.rotate(transforms.scale(x), max_angle=30)
+    x = transforms.rotate(transforms.scale(x, 0.6, 1.4), max_angle=30)
     x = transforms.gauss(x, min_sigma=0.8, max_sigma=1.2)
     x = transforms.translate(x)
     x = transforms.resize(x, rand_val=False, resize_val=224)
@@ -29,15 +28,21 @@ def sweep(image, output_file, min_val, max_val, step, transform, code, model):
     res = []
     while val <= max_val:
         transformed = transform(image, val)
-        preds = model.predictions(transformed, distribution=p, n=96).data.cpu().numpy()
+        preds = model.forward(transformed, distribution=p, n=96).data.cpu().numpy()
         mse_loss = binary.mse_dist(preds, code)
-        res.append((val, mse_loss))
+        binary_loss = binary.distance(code, preds)
+
+        res.append((val, binary_loss))
+
         print("mse: ", np.round(mse_loss, 4))
-        print("# of diff: ", binary.distance(code, preds))
         val += step
+
     x, y = zip(*res)
-    plt.ylim((0, 0.25))
-    plt.plot(x, y); plt.savefig("/output/" + output_file); plt.cla()
+
+    plt.plot(x, y); 
+    plt.ylim(0, TARGET_SIZE//2); 
+    plt.savefig("/output/" + output_file); 
+    plt.cla()
 
 def test_transforms():
     images = ["car.jpg"]
@@ -46,14 +51,18 @@ def test_transforms():
     for image_file in images:
         image = im.load("images/" + image_file)
         if image is None: continue
+        
         code = binary.random(n=32)
-
         encoded_img = encode_binary(image, model, target=code, verbose=True)
 
-        sweep(im.torch(encoded_img), image_file + "_rotate.jpg", -1.5, 1.5, 0.1, 
+        sweep(im.torch(encoded_img), image_file[:-4] + "_rotate.jpg", -0.6, 0.6, 0.02, 
             lambda x, val: transforms.rotate(x, rand_val=False, theta=val), code, model)
-        sweep(im.torch(encoded_img), image_file + "_scale.jpg", 0.5, 1.5, 0.05, 
+        sweep(im.torch(encoded_img), image_file[:-4] + "_scale.jpg", 0.5, 1.5, 0.02, 
             lambda x, val: transforms.scale(x, rand_val=False, scale_val=val), code, model)
+        # sweep(im.torch(encoded_img), image_file[:-4] + "_translatex.jpg", -50.0, 50.0, 5.0, 
+        #     lambda x, val: transforms.translate(x, rand_val=False, shift_vals=(0, val)), code, model)
+        # sweep(im.torch(encoded_img), image_file[:-4] + "_translatey.jpg", -50.0, 50.0, 5, 
+        #     lambda x, val: transforms.translate(x, rand_val=False, shift_vals=(val, 0)), code, model)
 
 def compare_image(original_file, transformed_file):
     original_img = im.load(original_file)
