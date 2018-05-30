@@ -6,3 +6,5 @@ __pycache__/*
 *.pyc
 data
 sftp-config.json
+output
+jobs
