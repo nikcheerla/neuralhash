@@ -14,6 +14,7 @@ from utils import *
 
 from skimage import filters
 from skimage.morphology import binary_dilation
+import matplotlib.pyplot as plt
 
 import IPython
 
@@ -69,6 +70,12 @@ class DecodingNet(nn.Module):
         predictions = F.softmax(x)[:, 0]
 
         return predictions
+
+    def drawLastLayer(self):
+        img = self.features.classifier.weight.data.numpy()
+        print(img)
+        plt.imshow(img)
+        plt.show()
 
     def load(self, file_path):
         self.load_state_dict(torch.load(file_path))
@@ -132,4 +139,8 @@ class DecodingDNN(nn.Module):
 if __name__ == "__main__":
 
     model = DecodingNet()
-    model.forward(Variable(torch.randn(3, 224, 224)))
+    print('SUprise')
+    model.drawLastLayer()
+    print('hi')
+    
+    #model.forward(Variable(torch.randn(3, 224, 224)))

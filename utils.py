@@ -17,7 +17,6 @@ USE_CUDA = torch.cuda.is_available()
 IMAGE_MAX = 255.0
 TARGET_SIZE = 32
 
-
 def corrcoef(x):
     mean_x = torch.mean(x, 1).unsqueeze(1)
     xm = x.sub(mean_x.expand_as(x))
