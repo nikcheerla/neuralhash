@@ -79,11 +79,11 @@ class DecodingNet(nn.Module):
 
         return predictions
 
-    def drawLastLayer(self):
+    def drawLastLayer(self, file_path):
         img = self.features.classifier.weight.data.numpy()
         print(img)
-        plt.imshow(img)
-        plt.show()
+        plt.imshow(img, aspect=40)
+        plt.savefig(file_path)       
 
     def load(self, file_path):
         self.load_state_dict(torch.load(file_path))
@@ -148,7 +148,7 @@ if __name__ == "__main__":
 
     model = DecodingNet()
     print('SUprise')
-    model.drawLastLayer()
+    model.drawLastLayer('testviz.png')
     print('hi')
     
     #model.forward(Variable(torch.randn(3, 224, 224)))
