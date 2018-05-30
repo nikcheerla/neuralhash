@@ -25,34 +25,43 @@ def p(x):
 
 def sweep(image, output_file, min_val, max_val, step, transform, code, model):
     val = min_val
-    res = []
+    res_bin = []
+    res_mse = []
     while val <= max_val:
         transformed = transform(image, val)
-        preds = model.forward(transformed, distribution=p, n=96).data.cpu().numpy()
+        preds = model.forward(transformed, distribution=p, n=96).mean(dim=0).data.cpu().numpy()
         mse_loss = binary.mse_dist(preds, code)
         binary_loss = binary.distance(code, preds)
 
-        res.append((val, binary_loss))
+        res_bin.append((val, binary_loss))
+        res_mse.append((val, mse_loss))
 
         print("mse: ", np.round(mse_loss, 4))
         val += step
 
-    x, y = zip(*res)
-
-    plt.plot(x, y); 
-    plt.ylim(0, TARGET_SIZE//2); 
+    x, bits_off = zip(*res_bin)
+    x, mse = zip(*res_mse)
+    fig, ax1 = plt.subplots()
+    ax1.plot(x, bits_off, 'b')
+    ax1.set_ylim(0, TARGET_SIZE//2)
+    ax1.set_ylabel('Number Incorrect Bits')
+    ax2 = ax1.twinx()
+    ax2.plot(x, mse, 'r')
+    ax2.set_ylim(0, 0.25)
+    ax2.set_ylabel('Mean Squared Error')
     plt.savefig("/output/" + output_file); 
     plt.cla()
 
-def test_transforms():
+def test_transforms(model=None):
     images = ["car.jpg"]
-    model = DecodingNet()
+    if model == None:
+        model = DecodingNet()
 
     for image_file in images:
         image = im.load("images/" + image_file)
         if image is None: continue
         
-        code = binary.random(n=32)
+        code = binary.random(n=TARGET_SIZE)
         encoded_img = encode_binary(image, model, target=code, verbose=True)
 
         sweep(im.torch(encoded_img), image_file[:-4] + "_rotate.jpg", -0.6, 0.6, 0.02, 
@@ -75,7 +84,8 @@ def compare_image(original_file, transformed_file):
     print("mse: ", np.round(mse_loss, 4))
     print("# of diff: ", binary.distance(code, preds))
 
-test_transforms()
+if __name__ == "__main__":
+    test_transforms()
 
 
 
