@@ -6,7 +6,6 @@ parser = argparse.ArgumentParser(description='Runs arbitary jobs with experiment
 
 parser.add_argument("cmd")
 parser.add_argument('--type', default="experiment", help='type of run')
-parser.add_argument('--config', default="experiment", help='configuration tag for the experiment')
 args = parser.parse_args()
 
 try:
@@ -18,7 +17,9 @@ run_data = run_log[args.type] = run_log.get(args.type, {})
 run_data["runs"] = run_data.get("runs", 0) + 1
 run_name = args.type + str(run_data["runs"])
 
-run_data[run_name] = {"config": args.config, "cmd": args.cmd, "status": "In Progress"}
+config = input ("Add a comment describing initial configuration? [ENTER to skip]: ")
+run_data[run_name] = {"config": config, "cmd": args.cmd, "status": "In Progress"}
+
 
 process = subprocess.Popen(args.cmd, shell=True)
 
@@ -29,16 +30,16 @@ def monitor_process(process, run_data):
 			pass
 		except (KeyboardInterrupt, SystemExit):
 			# Program shut down
-			run_data[run_name] = {"config": args.config, "cmd": args.cmd, "status": "Shutdown"}
+			run_data[run_name] = {"config": config, "cmd": args.cmd, "status": "Shutdown"}
 			process.kill()
 			return
 
 	if process.poll() == 0:
 		result = input ("Add a comment describing results? [ENTER to skip]: ")
-		run_data[run_name] = {"config": args.config, "cmd": args.cmd, \
+		run_data[run_name] = {"config": config, "cmd": args.cmd, \
 							"status": "Complete", "results": result}
 	else:
-		run_data[run_name] = {"config": args.config, "cmd": args.cmd, "status": "Error"}
+		run_data[run_name] = {"config": config, "cmd": args.cmd, "status": "Error"}
 
 monitor_process(process, run_data)
 
