@@ -29,12 +29,11 @@ class GramMatrix(nn.Module):
 
         features = input.view(N, C, H*W)  # resise F_XL into \hat F_XL
 
-        G = torch.bmm(features, features.t())  # compute the gram product
+        G = torch.bmm(features, features.permute(0,2,1))  # compute the gram product
 
         # we 'normalize' the values of the gram matrix
         # by dividing by the number of element in each feature maps.
-        print(G.size)
-        return G.div(N * C * H * W)
+        return G.div(C * H * W)
 
 """Decoding network that tries to predict a
 binary value of size target_size """
@@ -45,10 +44,10 @@ class DecodingNet(nn.Module):
 
         self.features = models.vgg11(pretrained=True)
         self.features.classifier = nn.Linear(25088, TARGET_SIZE*2)
-
-        mask = Variable(torch.bernoulli(torch.ones(TARGET_SIZE*2, 25088)*0.05))/0.05
-        self.features.classifier.weight.data = \
-            self.features.classifier.weight.data*mask.data
+        self.gram = GramMatrix()
+        # mask = Variable(torch.bernoulli(torch.ones(TARGET_SIZE*2, 25088)*0.05))/0.05
+        # self.features.classifier.weight.data = \
+        #     self.features.classifier.weight.data*mask.data
 
         self.features.eval()
 
@@ -62,11 +61,20 @@ class DecodingNet(nn.Module):
             ((x[1]-0.456)/(0.224)).unsqueeze(0),
             ((x[2]-0.406)/(0.225)).unsqueeze(0)], dim=0)
 
-        images = torch.cat([distribution(x).unsqueeze(0) for i in range(0, n)], dim=0)
+        x = torch.cat([distribution(x).unsqueeze(0) for i in range(0, n)], dim=0)
 
-        x = self.features(images).view(images.size(0), TARGET_SIZE, 2)
-        x = x.mean(dim=0)
-        predictions = F.softmax(x)[:, 0]
+        #vgg layers
+        for layer in list(self.features.features._modules.values()):
+            x = layer(x)
+
+        # x = self.gram(x)
+        x = x.view(x.size(0), -1)
+        x = (x - x.mean(dim=1, keepdim=True))/(x.std(dim=1, keepdim=True))
+
+        x = self.features.classifier(x)
+        x = x.view(x.size(0), TARGET_SIZE, 2)#.mean(dim=0) # reshape and average
+
+        predictions = F.softmax(x, dim=2)[:,:, 0]
 
         return predictions
 

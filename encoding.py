@@ -23,16 +23,16 @@ import IPython
 
 import transforms
 
-EPSILON = 2e-2
-MIN_LOSS = 3e-3
+EPSILON = 1e-2
+MIN_LOSS = 5e-3
 BATCH_SIZE = 80
 
 
-def encode_binary(image, model, target, max_iter=400, verbose=False):
+def encode_binary(image, model, target, max_iter=200, verbose=False):
 
     image = im.torch(image)
     perturbation_old = None
-    print("Target: ", binary.str(target))
+    # print("Target: ", binary.str(target))
     
     if USE_CUDA: perturbation = nn.Parameter(torch.randn(image.size()).cuda()+0.0)
     else: perturbation = nn.Parameter(torch.randn(image.size())+0.0)
@@ -48,9 +48,11 @@ def encode_binary(image, model, target, max_iter=400, verbose=False):
 
     # returns the loss for the image
     def loss_func(model, x):
-        predictions = model.forward(x, distribution=p, n=BATCH_SIZE, return_variance=False)
-        return F.mse_loss(predictions, binary.target(target)), \
-                    predictions.cpu().data.numpy().round(2)
+        predictions = model.forward(x, distribution=p, n=BATCH_SIZE, return_variance=False) # (N, T)
+        return F.binary_cross_entropy(predictions, binary.target(target).repeat(BATCH_SIZE, 1)), \
+            predictions.mean(dim=0).cpu().data.numpy().round(2)
+        # return F.mse_loss(predictions, binary.target(target)), \
+        #             predictions.cpu().data.numpy().round(2)
 
     opt = torch.optim.Adam([perturbation], lr=2e-1)
 
@@ -66,6 +68,8 @@ def encode_binary(image, model, target, max_iter=400, verbose=False):
             changed_image = (image + perturbation_zc).clamp(min=0.1, max=0.99)
             
             loss, predictions = loss_func(model, changed_image)
+            # print("bce loss = ", loss.cpu().data.numpy)
+            # loss += 0.1 * (changed_image - image).norm(2)
             loss.backward()
 
             preds.append(predictions)
@@ -98,7 +102,7 @@ def encode_binary(image, model, target, max_iter=400, verbose=False):
         smooth_loss = np.mean(losses[-20:])
         if smooth_loss <= MIN_LOSS:
             break
-
+    print ("Loss: ", np.mean(losses[-1]))
     return im.numpy(changed_image)
 
 if __name__ == "__main__":
