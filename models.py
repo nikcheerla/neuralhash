@@ -3,6 +3,10 @@ from __future__ import print_function
 import numpy as np
 import random, sys, os, json
 
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -14,7 +18,6 @@ from utils import *
 
 from skimage import filters
 from skimage.morphology import binary_dilation
-import matplotlib.pyplot as plt
 
 import IPython
 
@@ -80,10 +83,11 @@ class DecodingNet(nn.Module):
         return predictions
 
     def drawLastLayer(self, file_path):
-        img = self.features.classifier.weight.data.numpy()
+        img = self.features.classifier.weight.cpu().data.numpy()
         print(img)
-        plt.imshow(img, aspect=40)
-        plt.savefig(file_path)       
+        plt.imshow(img, cmap='hot')
+        plt.savefig(file_path)
+        plt.cla()       
 
     def load(self, file_path):
         self.load_state_dict(torch.load(file_path))
@@ -148,7 +152,7 @@ if __name__ == "__main__":
 
     model = DecodingNet()
     print('SUprise')
-    model.drawLastLayer('testviz.png')
+    model.drawLastLayer('output/testviz.png')
     print('hi')
     
     #model.forward(Variable(torch.randn(3, 224, 224)))

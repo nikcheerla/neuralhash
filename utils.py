@@ -16,6 +16,7 @@ import random
 USE_CUDA = torch.cuda.is_available()
 IMAGE_MAX = 255.0
 TARGET_SIZE = 32
+OUTPUT_DIR = "output/"
 
 def corrcoef(x):
     mean_x = torch.mean(x, 1).unsqueeze(1)

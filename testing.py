@@ -49,7 +49,7 @@ def sweep(image, output_file, min_val, max_val, step, transform, code, model):
     ax2.plot(x, mse, 'r')
     ax2.set_ylim(0, 0.25)
     ax2.set_ylabel('Mean Squared Error')
-    plt.savefig("/output/" + output_file); 
+    plt.savefig(OUTPUT_DIR + output_file); 
     plt.cla()
 
 def test_transforms(model=None):

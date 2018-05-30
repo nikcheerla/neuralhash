@@ -51,8 +51,8 @@ def encode_binary(image, model, target, max_iter=200, verbose=False):
         predictions = model.forward(x, distribution=p, n=BATCH_SIZE, return_variance=False) # (N, T)
         return F.binary_cross_entropy(predictions, binary.target(target).repeat(BATCH_SIZE, 1)), \
             predictions.mean(dim=0).cpu().data.numpy().round(2)
-        # return F.mse_loss(predictions, binary.target(target)), \
-        #             predictions.cpu().data.numpy().round(2)
+        # return F.mse_loss(predictions, binary.target(target).repeat(BATCH_SIZE, 1)), \
+        #             predictions.mean(dim=0).cpu().data.numpy().round(2)
 
     opt = torch.optim.Adam([perturbation], lr=2e-1)
 
@@ -88,13 +88,13 @@ def encode_binary(image, model, target, max_iter=200, verbose=False):
 
             if verbose:
                 print ("Loss: ", np.mean(losses[-20:]))
-                im.save(im.numpy(perturbation), file="/output/perturbation.jpg")
-                im.save(im.numpy(changed_image), file="/output/changed_image.jpg")
+                im.save(im.numpy(perturbation), file=f"{OUTPUT_DIR}perturbation.jpg")
+                im.save(im.numpy(changed_image), file=f"{OUTPUT_DIR}changed_image.jpg")
 
                 plt.plot(np.array(preds)); 
-                plt.savefig("/output/preds.jpg"); plt.cla()
+                plt.savefig(OUTPUT_DIR + "preds.jpg"); plt.cla()
                 plt.plot(losses); 
-                plt.savefig("/output/loss.jpg"); plt.cla()
+                plt.savefig(OUTPUT_DIR + "loss.jpg"); plt.cla()
 
                 pred = binary.get(np.mean(preds[-20:], axis=0))
                 print ("Modified prediction: ", binary.str(pred), binary.distance(pred, target))

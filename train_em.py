@@ -37,12 +37,16 @@ def loss_func(model, encoded_image, target):
 if __name__ == "__main__":
 
 	model = DecodingNet()
-	optimizer = torch.optim.SGD(model.features.classifier.parameters(), lr=1e-3)
+	optimizer = torch.optim.SGD(model.features.classifier.parameters(), lr=1e-2)
 	
 	def data_generator():
-		files = glob.glob("/data/cats/*.jpg")
+		path = "/home/RC/neuralhash/data/tiny-imagenet-200/test/images"
+		files = glob.glob(f"{path}/*.JPEG")
 		for image in random.sample(files, k=len(files)):
-			yield im.load(image)
+			img = im.load(image)
+			if img is None:
+				continue
+			yield img
 
 	losses = []
 	for i in range(0, 50):
@@ -56,11 +60,12 @@ if __name__ == "__main__":
 		loss.backward()
 		optimizer.step()
 
-		# if i % 10 == 0:
+		if i % 5 == 0:
+			model.drawLastLayer(OUTPUT_DIR + "mat_viz_" + str(i) + ".png")
 		print("train loss = ", np.mean(losses[-1]))
 		# print("loss after step = ", loss_func(model, encoded_im, target).cpu().data.numpy())
 
 	test_transforms(model)
-	model.save("/output/train_test.pth")
+	model.save(OUTPUT_DIR + "train_test.pth")
 
 
