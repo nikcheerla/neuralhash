@@ -4,3 +4,5 @@ __*
 __pycache__/*
 *.swp
 *.pyc
+data
+sftp-config.json
