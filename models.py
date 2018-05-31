@@ -87,7 +87,6 @@ class DecodingNet(nn.Module):
         print(img)
         plt.imshow(img, cmap='hot')
         plt.savefig(file_path)
-        plt.cla()       
 
     def load(self, file_path):
         self.load_state_dict(torch.load(file_path))

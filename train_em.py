@@ -60,7 +60,7 @@ if __name__ == "__main__":
 		loss.backward()
 		optimizer.step()
 
-		if i % 5 == 0:
+		if i % 10 == 0:
 			model.drawLastLayer(OUTPUT_DIR + "mat_viz_" + str(i) + ".png")
 		print("train loss = ", np.mean(losses[-1]))
 		# print("loss after step = ", loss_func(model, encoded_im, target).cpu().data.numpy())
