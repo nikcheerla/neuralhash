@@ -29,7 +29,7 @@ def monitor_process(process, run_data):
 			pass
 		except (KeyboardInterrupt, SystemExit):
 			# Program shut down
-			run_data[run_name] = {"config": args.config, "status": "Shutdown"}
+			run_data[run_name] = {"config": args.config, "cmd": args.cmd, "status": "Shutdown"}
 			process.kill()
 			return
 
