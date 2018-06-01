@@ -150,8 +150,6 @@ class DecodingDNN(nn.Module):
 if __name__ == "__main__":
 
     model = DecodingNet()
-    print('SUprise')
     model.drawLastLayer('output/testviz.png')
-    print('hi')
     
     #model.forward(Variable(torch.randn(3, 224, 224)))

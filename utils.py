@@ -14,28 +14,31 @@ import random
 
 
 USE_CUDA = torch.cuda.is_available()
+DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 IMAGE_MAX = 255.0
 TARGET_SIZE = 32
 OUTPUT_DIR = "output/"
 
 def corrcoef(x):
-    mean_x = torch.mean(x, 1).unsqueeze(1)
-    xm = x.sub(mean_x.expand_as(x))
-    c = xm.mm(xm.t())
-    c = c / (x.size(1) - 1)
+	mean_x = torch.mean(x, 1).unsqueeze(1)
+	xm = x.sub(mean_x.expand_as(x))
+	c = xm.mm(xm.t())
+	c = c / (x.size(1) - 1)
 
-    # normalize covariance matrix
-    d = torch.diag(c)
-    stddev = torch.pow(d, 0.5)
-    c = c.div(stddev.expand_as(c))
-    c = c.div(stddev.expand_as(c).t())
+	# normalize covariance matrix
+	d = torch.diag(c)
+	stddev = torch.pow(d, 0.5)
+	c = c.div(stddev.expand_as(c))
+	c = c.div(stddev.expand_as(c).t())
 
-    # clamp between -1 and 1
-    # probably not necessary but numpy does it
-    c = torch.clamp(c, -1.0, 1.0)
+	# clamp between -1 and 1
+	# probably not necessary but numpy does it
+	c = torch.clamp(c, -1.0, 1.0)
 
-    return c
+	return c
 
+def tve_loss(x):
+	return ((x[:,:-1,:] - x[:,1:,:])**2).sum() + ((x[:,:,:-1] - x[:,:,1:])**2).sum()
 
 def batched(datagen, batch_size=32):
 	arr = []

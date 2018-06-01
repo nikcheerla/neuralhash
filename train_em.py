@@ -40,8 +40,8 @@ if __name__ == "__main__":
 	optimizer = torch.optim.SGD(model.features.classifier.parameters(), lr=1e-2)
 	
 	def data_generator():
-		path = "/home/RC/neuralhash/data/tiny-imagenet-200/test/images"
-		files = glob.glob(f"{path}/*.JPEG")
+		path = "/home/RC/neuralhash/data/tiny-imagenet-200/train/CLASS/images"
+		files = glob.glob(f"{path}/*/images/*.JPEG")
 		for image in random.sample(files, k=len(files)):
 			img = im.load(image)
 			if img is None:
@@ -52,7 +52,7 @@ if __name__ == "__main__":
 	for i in range(0, 50):
 		image = next(data_generator())
 		target = binary.random(n=TARGET_SIZE)
-		encoded_im = encode_binary(image, model, target, max_iter=10, verbose=False)
+		encoded_im = encode_binary(image, model, target, max_iter=1, verbose=False)
 		loss = loss_func(model, encoded_im, target)
 		losses.append(loss.cpu().data.numpy())
 

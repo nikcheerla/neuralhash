@@ -17,8 +17,6 @@ from models import DecodingNet
 from torchvision import models
 from utils import *
 
-from skimage import filters
-from skimage.morphology import binary_dilation
 import IPython
 
 import transforms
@@ -29,101 +27,78 @@ BATCH_SIZE = 80
 
 
 def encode_binary(image, model, target, max_iter=200, verbose=False):
-    
-    EPSILON = 2e-2
+	
+	image = im.torch(image)
+	perturbation = nn.Parameter(0.03*torch.randn(image.size()).to(DEVICE)+0.0)
 
-    image = im.torch(image)
-    perturbation_old = None
-    # print("Target: ", binary.str(target))
-    
-    if USE_CUDA: perturbation = nn.Parameter(0.1*torch.randn(image.size()).cuda()+0.0)
-    else: perturbation = nn.Parameter(torch.randn(image.size())+0.0)
+	# returns an image after a series of transformations
+	def p(x):
+		x = transforms.resize_rect(x)
+		x = transforms.rotate(transforms.scale(x, 0.6, 1.4), max_angle=30)
+		x = transforms.gauss(x, min_sigma=0.8, max_sigma=1.2)
+		x = transforms.translate(x)
+		x = transforms.identity(x)
+		return x
 
-    # returns an image after a series of transformations
-    def p(x):
-        x = transforms.resize_rect(x)
-        x = transforms.rotate(transforms.scale(x, 0.6, 1.4), max_angle=30)
-        x = transforms.gauss(x, min_sigma=0.8, max_sigma=1.2)
-        x = transforms.translate(x)
-        x = transforms.identity(x)
-        return x
+	# returns the loss for the image
+	def loss_func(model, x):
+		scores = model.forward(x, distribution=p, n=BATCH_SIZE, return_variance=False) # (N, T)
+		predictions = scores.mean(dim=0)
+		return F.binary_cross_entropy(scores, binary.target(target).repeat(BATCH_SIZE, 1)), \
+			predictions.cpu().data.numpy().round(2)
+		# return F.mse_loss(predictions, binary.target(target).repeat(BATCH_SIZE, 1)), \
+		#             predictions.mean(dim=0).cpu().data.numpy().round(2)
+	
+	alpha, beta, gamma = 1, 1e-6, 0.01
+	hinge = 0.3
 
-    # returns the loss for the image
-    def loss_func(model, x):
-        predictions = model.forward(x, distribution=p, n=BATCH_SIZE, return_variance=False) # (N, T)
-        return F.binary_cross_entropy(predictions, binary.target(target).repeat(BATCH_SIZE, 1)), \
-            predictions.mean(dim=0).cpu().data.numpy().round(2)
-        # return F.mse_loss(predictions, binary.target(target).repeat(BATCH_SIZE, 1)), \
-        #             predictions.mean(dim=0).cpu().data.numpy().round(2)
+	opt = torch.optim.Adam([perturbation], lr=2e-1)
+	losses, preds = [], []
 
-    def tve_loss(x):
-        return ((x[:,:-1,:] - x[:,1:,:])**2).sum() + ((x[:,:,:-1] - x[:,:,1:])**2).sum()
-    
-    eps = nn.Parameter(torch.tensor(EPSILON).cuda()+0.0)
-    alpha, beta = 100, 0.1
-    hinge = 0.4
+	for i in range(0, max_iter+1):
 
-    opt = torch.optim.Adam([perturbation], lr=2e-1)
-    losses = []
-    preds = []
-    p_losses = []
-    for i in range(0, max_iter+1):
+		opt.zero_grad()
 
-        def closure():
-            opt.zero_grad()
+		perturbation_zc = (perturbation - perturbation.mean())/perturbation.std()*EPSILON
+		changed_image = (image + perturbation_zc).clamp(min=0, max=1)
 
-            # perform projected gradient descent by norm bounding the perturbation
-            # eps_c = eps.clamp(min=0, max=EPSILON)
-            perturbation_zc = (perturbation - perturbation.mean())/(perturbation.std()) * eps
-            changed_image = (image + perturbation_zc).clamp(min=0.1, max=0.99)
+		loss, predictions = loss_func(model, changed_image)
+		# perceptual_loss = beta*tve_loss(changed_image) + gamma*perturbation.norm(2)
+		# robustness_loss = alpha*((mean_loss-hinge).clamp(min=0))
+		# loss = perceptual_loss + robustness_loss
+		loss.backward()
+		opt.step()
 
-            loss, predictions = loss_func(model, changed_image)
+		preds.append(predictions)
+		losses.append(loss.cpu().data.numpy())
 
-            perceptual_loss = perturbation_zc.norm(2)
-            total = alpha*((loss-hinge).clamp(min=0)) + beta*perceptual_loss
-            loss.backward()
-            preds.append(predictions)
-            losses.append(loss.cpu().data.numpy())
-            p_losses.append(perceptual_loss.cpu().data.numpy())
-            return loss
+		if verbose and i % 20 == 0:
+			# print("Epsilon: ", eps.cpu().data.numpy())
+			# print (perceptual_loss.cpu().data.numpy(), robustness_loss.cpu().data.numpy())
+			print ("Loss: ", np.mean(losses[-20:]))
 
-        opt.step(closure)
-        
-        if i % 10 == 0:
-            beta *= 1
+			im.save(im.numpy(perturbation), file=f"{OUTPUT_DIR}perturbation.jpg")
+			im.save(im.numpy(changed_image), file=f"{OUTPUT_DIR}changed_image.jpg")
 
-        if i % 20 == 0:
-            # perturbation_zc = perturbation / perturbation.norm(2) * 5
-            perturbation_zc = (perturbation - perturbation.mean())/(perturbation.std()) * eps
+			plt.plot(np.array(preds)); 
+			plt.savefig(OUTPUT_DIR + "preds.jpg"); plt.cla()
+			plt.plot(losses); 
+			plt.savefig(OUTPUT_DIR + "loss.jpg"); plt.cla()
 
-            changed_image = (image + perturbation_zc).clamp(min=0.1, max=0.99)
+			pred = binary.get(np.mean(preds[-20:], axis=0))
+			print ("Modified prediction: ", binary.str(pred), binary.distance(pred, target))
 
-            if verbose:
-                # print("Epsilon: ", eps.cpu().data.numpy())
-                print ("Loss: ", np.mean(losses[-20:]))
-                print("Perceptual: ", np.mean(p_losses[-20:]))
-                im.save(im.numpy(perturbation), file=f"{OUTPUT_DIR}perturbation.jpg")
-                im.save(im.numpy(changed_image), file=f"{OUTPUT_DIR}changed_image.jpg")
+		smooth_loss = np.mean(losses[-20:])
+		if smooth_loss <= MIN_LOSS:
+			break
 
-                plt.plot(np.array(preds)); 
-                plt.savefig(OUTPUT_DIR + "preds.jpg"); plt.cla()
-                plt.plot(losses); 
-                plt.savefig(OUTPUT_DIR + "loss.jpg"); plt.cla()
-
-                pred = binary.get(np.mean(preds[-20:], axis=0))
-                print ("Modified prediction: ", binary.str(pred), binary.distance(pred, target))
-
-        smooth_loss = np.mean(losses[-20:])
-        if smooth_loss <= MIN_LOSS:
-            break
-
-    print(f"Epsilon: {EPSILON}")
-    print ("Loss: ", np.mean(losses[-1]))
-    return im.numpy(changed_image)
+	print(f"Epsilon: {EPSILON}")
+	print ("Loss: ", np.mean(losses[-1]))
+	return im.numpy(changed_image)
 
 if __name__ == "__main__":
-    target = binary.random(n=TARGET_SIZE)
-    model = DecodingNet()
-    print("Target: ", binary.str(target))
-    encode_binary(im.load("images/car.jpg"), model, target=target, verbose=True)
+	target = binary.random(n=TARGET_SIZE)
+	model = DecodingNet()
+	print("Target: ", binary.str(target))
+	encode_binary(im.load("images/car.jpg"), model, target=target, verbose=True)
 
