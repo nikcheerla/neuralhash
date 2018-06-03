@@ -74,8 +74,7 @@ class im(object):
 	@staticmethod
 	def torch(image):
 		x = Variable(torch.FloatTensor(image).permute(2, 0, 1))
-		if USE_CUDA: x = x.cuda()
-		return x
+		return x.to(DEVICE)
 
 	@staticmethod
 	def numpy(image):
@@ -102,8 +101,7 @@ class binary(object):
 	@staticmethod
 	def target(values):
 		values = Variable(torch.FloatTensor(np.array([float(x) for x in values])))
-		if USE_CUDA: values = values.cuda()
-		return values
+		return values.to(DEVICE)
 
 	@staticmethod
 	def redundant(values, n=3):

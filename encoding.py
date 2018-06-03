@@ -23,7 +23,7 @@ import transforms
 
 EPSILON = 1.5e-2
 MIN_LOSS = 5e-3
-BATCH_SIZE = 80
+BATCH_SIZE = 8
 
 
 def encode_binary(image, model, target, max_iter=200, verbose=False):

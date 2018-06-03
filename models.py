@@ -23,9 +23,6 @@ import IPython
 
 import transforms
 
-def identity(x):
-    x = transforms.resize(x, rand_val=False, resize_val=224)
-    return x
 
 class GramMatrix(nn.Module):
     def forward(self, input):
@@ -47,22 +44,15 @@ class DecodingNet(nn.Module):
         super(DecodingNet, self).__init__()
 
         self.features = models.vgg11(pretrained=True)
-        self.features.classifier = nn.Linear(25088, TARGET_SIZE*2)
+        self.classifier = nn.Linear(25088, TARGET_SIZE*2)
         
-        w = self.features.classifier.weight.cpu().data.numpy()
-        # print(w.shape)
+        w = self.classifier.weight.cpu().data.numpy()
         q, r = np.linalg.qr(w.T)
         q = q * 0.5775073
-        # print(np.linalg.norm(q, axis=0))
-        self.features.classifier.weight.data = torch.tensor(q.T, requires_grad=True)
-        self.gram = GramMatrix()
-        # mask = Variable(torch.bernoulli(torch.ones(TARGET_SIZE*2, 25088)*0.05))/0.05
-        # self.features.classifier.weight.data = \
-        #     self.features.classifier.weight.data*mask.data
 
+        self.classifier.weight.data = torch.tensor(q.T, requires_grad=True)
         self.features.eval()
-
-        if USE_CUDA: self.cuda()
+        self.to(DEVICE)
 
     def forward(self, x, verbose=False, distribution=transforms.identity, 
                     n=1, return_variance=False):
@@ -75,14 +65,12 @@ class DecodingNet(nn.Module):
         x = torch.cat([distribution(x).unsqueeze(0) for i in range(0, n)], dim=0)
 
         #vgg layers
-        for layer in list(self.features.features._modules.values()):
-            x = layer(x)
+        x = self.features.features(x)
 
-        # x = self.gram(x)
         x = x.view(x.size(0), -1)
         x = (x - x.mean(dim=1, keepdim=True))/(x.std(dim=1, keepdim=True))
 
-        x = self.features.classifier(x)
+        x = self.classifier(x)
         x = x.view(x.size(0), TARGET_SIZE, 2)#.mean(dim=0) # reshape and average
 
         predictions = F.softmax(x, dim=2)[:,:, 0]
@@ -90,7 +78,7 @@ class DecodingNet(nn.Module):
         return predictions
 
     def drawLastLayer(self, file_path):
-        img = self.features.classifier.weight.cpu().data.numpy()
+        img = self.classifier.weight.cpu().data.numpy()
         # print(img)
         plt.figure(figsize=(10, 10))
         plt.imshow(img, aspect='40', cmap='hot')
@@ -107,19 +95,16 @@ class DecodingNet(nn.Module):
 
 
 
-
-"""More complex network that tries to predict a
+"""Decoding network that tries to predict a
 binary value of size target_size """
-class DecodingDNN(nn.Module):
+class DilatedDecodingNet(nn.Module):
 
     def __init__(self):
-        super(DecodingDNN, self).__init__()
+        super(DilatedDecodingNet, self).__init__()
 
-        self.features = models.resnet101(pretrained=True)
-        self.classifier = nn.Linear(1024*2*2, TARGET_SIZE*2)
-        
-        mask = Variable(torch.bernoulli(torch.ones(TARGET_SIZE*2, 1024*2*2)*0.03))/0.03
-        self.classifier.weight.data = self.classifier.weight.data*mask.data
+        self.features = models.vgg11(pretrained=True)
+        self.classifier = nn.Linear(512**2, TARGET_SIZE*2)
+        self.gram = GramMatrix()
         self.features.eval()
 
         if USE_CUDA: self.cuda()
@@ -133,21 +118,38 @@ class DecodingDNN(nn.Module):
             ((x[2]-0.406)/(0.225)).unsqueeze(0)], dim=0)
 
         x = torch.cat([distribution(x).unsqueeze(0) for i in range(0, n)], dim=0)
-        for layer in list(self.features._modules.values())[0:6]:
-            x = layer(x)
 
-        module = list(self.features._modules.values())[6]
-        for layer in list(module._modules.values())[0:5]:
-            x = layer(x)
+        #vgg layers
+        dilation_factor = 1
+        for layer in list(self.features.features._modules.values()):
+            if isinstance(layer, nn.Conv2d):
+                x = F.conv2d(x, layer.weight, bias=layer.bias, stride=layer.stride, \
+                    padding=tuple(layer.padding*np.array(dilation_factor)), dilation=dilation_factor)
+            elif isinstance(layer, nn.MaxPool2d):
+                if dilation_factor == 1:
+                    x = F.max_pool2d(x, 2, stride=1, dilation=1)
+                    x = F.pad(x, (1, 0, 1, 0))
+                else:
+                    x = F.max_pool2d(x, 2, stride=1, dilation=dilation_factor)
+                    x = F.pad(x, [dilation_factor//2]*4)
+                dilation_factor *= 2
+            else:
+                x = layer(x)
 
-        x = F.max_pool2d(x, x.size(2)//2) + F.avg_pool2d(x, x.size(2)//2)
+        x = self.gram(x)
         x = x.view(x.size(0), -1)
         x = (x - x.mean(dim=1, keepdim=True))/(x.std(dim=1, keepdim=True))
-        x = self.classifier(x).view(x.size(0), TARGET_SIZE, 2)
-        x = x.mean(dim=0)
-        predictions = F.softmax(x)[:, 0]
+        x = self.classifier(x)
+        x = x.view(x.size(0), TARGET_SIZE, 2)#.mean(dim=0) # reshape and average
+
+        predictions = F.softmax(x, dim=2)[:,:, 0]
 
         return predictions
+
+    def drawLastLayer(self, file_path):
+        img = self.classifier.weight.cpu().data.numpy()
+        plt.imshow(img, cmap='hot')
+        plt.savefig(file_path)
 
     def load(self, file_path):
         self.load_state_dict(torch.load(file_path))
@@ -156,9 +158,14 @@ class DecodingDNN(nn.Module):
         torch.save(self.state_dict(), file_path)
 
 
+
+
+
+
+
 if __name__ == "__main__":
 
-    model = DecodingNet()
-    model.drawLastLayer('output/testviz.png')
-    
-    #model.forward(Variable(torch.randn(3, 224, 224)))
+    model = nn.DataParallel(DecodingNet())
+    x = torch.randn(3, 224, 224).float().to(DEVICE)
+    x = model.forward(x, n=1)
+    print (x.shape)
