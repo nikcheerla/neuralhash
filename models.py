@@ -48,6 +48,13 @@ class DecodingNet(nn.Module):
 
         self.features = models.vgg11(pretrained=True)
         self.features.classifier = nn.Linear(25088, TARGET_SIZE*2)
+        
+        w = self.features.classifier.weight.cpu().data.numpy()
+        # print(w.shape)
+        q, r = np.linalg.qr(w.T)
+        q = q * 0.5775073
+        # print(np.linalg.norm(q, axis=0))
+        self.features.classifier.weight.data = torch.tensor(q.T, requires_grad=True)
         self.gram = GramMatrix()
         # mask = Variable(torch.bernoulli(torch.ones(TARGET_SIZE*2, 25088)*0.05))/0.05
         # self.features.classifier.weight.data = \
@@ -84,9 +91,11 @@ class DecodingNet(nn.Module):
 
     def drawLastLayer(self, file_path):
         img = self.features.classifier.weight.cpu().data.numpy()
-        print(img)
-        plt.imshow(img, cmap='hot')
+        # print(img)
+        plt.figure(figsize=(10, 10))
+        plt.imshow(img, aspect='40', cmap='hot')
         plt.savefig(file_path)
+
 
     def load(self, file_path):
         self.load_state_dict(torch.load(file_path))

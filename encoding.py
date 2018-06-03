@@ -21,14 +21,15 @@ import IPython
 
 import transforms
 
-EPSILON = 2e-2
+EPSILON = 1.5e-2
 MIN_LOSS = 5e-3
 BATCH_SIZE = 80
 
 
 def encode_binary(image, model, target, max_iter=200, verbose=False):
-	
-	image = im.torch(image)
+
+	if not isinstance(image, torch.Tensor):
+		image = im.torch(image)
 	perturbation = nn.Parameter(0.03*torch.randn(image.size()).to(DEVICE)+0.0)
 
 	# returns an image after a series of transformations
@@ -44,6 +45,7 @@ def encode_binary(image, model, target, max_iter=200, verbose=False):
 	def loss_func(model, x):
 		scores = model.forward(x, distribution=p, n=BATCH_SIZE, return_variance=False) # (N, T)
 		predictions = scores.mean(dim=0)
+		#smoothness_loss = tv_loss(x, 2e-2) #second parameter is tv_loss
 		return F.binary_cross_entropy(scores, binary.target(target).repeat(BATCH_SIZE, 1)), \
 			predictions.cpu().data.numpy().round(2)
 		# return F.mse_loss(predictions, binary.target(target).repeat(BATCH_SIZE, 1)), \
@@ -56,13 +58,16 @@ def encode_binary(image, model, target, max_iter=200, verbose=False):
 	losses, preds = [], []
 
 	for i in range(0, max_iter+1):
-
+		#print('shape: ' + str(image.size()))
 		opt.zero_grad()
-
-		perturbation_zc = (perturbation - perturbation.mean())/perturbation.std()*EPSILON
+		#TODO: Change back
+		#perturbation_zc = (perturbation - perturbation.mean())/perturbation.std()*EPSILON
+		perturbation_zc = (perturbation)/(perturbation.norm(2))*EPSILON
 		changed_image = (image + perturbation_zc).clamp(min=0, max=1)
 
 		loss, predictions = loss_func(model, changed_image)
+		loss += tve_loss(perturbation, 2e-3)
+		#loss += tv_loss(perturbation
 		# perceptual_loss = beta*tve_loss(changed_image) + gamma*perturbation.norm(2)
 		# robustness_loss = alpha*((mean_loss-hinge).clamp(min=0))
 		# loss = perceptual_loss + robustness_loss
@@ -101,4 +106,5 @@ if __name__ == "__main__":
 	model = DecodingNet()
 	print("Target: ", binary.str(target))
 	encode_binary(im.load("images/car.jpg"), model, target=target, verbose=True)
+
 
