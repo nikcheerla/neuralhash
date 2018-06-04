@@ -65,7 +65,7 @@ def test_transforms(model=None):
     for image_file in images:
         image = im.load("images/" + image_file)
         if image is None: continue
-        print(avg_gradient(image))
+
         code = binary.random(n=TARGET_SIZE)
         encoded_img = encode_binary(image, model, target=code, verbose=True)
 
