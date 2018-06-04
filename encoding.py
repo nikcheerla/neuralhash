@@ -21,9 +21,9 @@ import IPython
 
 import transforms
 
-EPSILON = 1.5e-2
+EPSILON = 3e-2
 MIN_LOSS = 5e-3
-BATCH_SIZE = 8
+BATCH_SIZE = 64
 
 
 def encode_binary(image, model, target, max_iter=200, verbose=False):
@@ -61,12 +61,12 @@ def encode_binary(image, model, target, max_iter=200, verbose=False):
 		#print('shape: ' + str(image.size()))
 		opt.zero_grad()
 		#TODO: Change back
-		#perturbation_zc = (perturbation - perturbation.mean())/perturbation.std()*EPSILON
-		perturbation_zc = (perturbation)/(perturbation.norm(2))*EPSILON
+		perturbation_zc = (perturbation - perturbation.mean())/perturbation.std()*EPSILON
+		#perturbation_zc = (perturbation)/(perturbation.norm(2) ** 0.5)*EPSILON
 		changed_image = (image + perturbation_zc).clamp(min=0, max=1)
 
 		loss, predictions = loss_func(model, changed_image)
-		loss += tve_loss(perturbation, 2e-3)
+		#loss += tve_loss(perturbation) * 2e-3
 		#loss += tv_loss(perturbation
 		# perceptual_loss = beta*tve_loss(changed_image) + gamma*perturbation.norm(2)
 		# robustness_loss = alpha*((mean_loss-hinge).clamp(min=0))

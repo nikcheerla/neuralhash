@@ -32,6 +32,8 @@ def p(x):
 
 def loss_func(model, encoded_im, target):
 	predictions = model.forward(encoded_im, distribution=p, n=64) # (N, T)
+	correlations = corrcoef(predictions)
+	print ("Correlations: ", correlations.cpu().data.numpy())
 	return F.binary_cross_entropy(predictions, binary.target(target).repeat(64, 1))
 
 def create_targets():
@@ -48,18 +50,17 @@ if __name__ == "__main__":
 		files = glob.glob(path)
 		while True:
 			img = im.load(random.choice(files))
-			if img is None:
-				continue
+			if img is None: continue
 			yield img
 
 	losses = []
-
 	
-	target = binary.random(n=TARGET_SIZE)
 
-	for i in range(0, 1000):
+	for i in range(0, 100):
 
 		image = next(data_generator())
+		target = binary.random(n=TARGET_SIZE)
+
 		encoded_im = im.torch(encode_binary(image, model, target, max_iter=3))
 		
 		loss = loss_func(model, encoded_im, target)
@@ -70,11 +71,11 @@ if __name__ == "__main__":
 
 		losses.append(loss.cpu().data.numpy())
 
-		if i % 10 == 0:
-			model.drawLastLayer(OUTPUT_DIR + "mat_viz_" + str(i) + ".png")
+		# if i % 10 == 0:
+		# 	model.drawLastLayer(OUTPUT_DIR + "mat_viz_" + str(i) + ".png")
 
-		print("train loss = ", losses[-1])
-		print("loss after step = ", loss_func(model, encoded_im, target).cpu().data.numpy())
+		print ("train loss = ", losses[-1])
+		print ("loss after step = ", loss_func(model, encoded_im, target).cpu().data.numpy())
 
 	test_transforms(model)
 	model.save(OUTPUT_DIR + "train_test.pth")

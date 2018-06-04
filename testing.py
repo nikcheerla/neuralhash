@@ -55,7 +55,7 @@ def sweep(image, output_file, min_val, max_val, step, transform, code, model):
 def test_transforms(model=None):
     images = ["car.jpg"]
     if model == None:
-        model = DilatedDecodingNet()
+        model = DecodingNet()
 
     for image_file in images:
         image = im.load("images/" + image_file)
