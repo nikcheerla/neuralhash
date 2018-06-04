@@ -62,10 +62,8 @@ def encode_binary(image, model, target, max_iter=200, verbose=False):
 	for i in range(0, max_iter+1):
 		#print('shape: ' + str(image.size()))
 		opt.zero_grad()
-		#TODO: Change back
-		#perturbation_zc = (perturbation - perturbation.mean())/perturbation.std()*EPSILON
-		perturbation_zc = perturbation/perturbation.norm(2)*EPSILON*((3*224*224)**0.5)
 
+		perturbation_zc = perturbation/perturbation.norm(2)*EPSILON*(perturbation.nelement()**0.5)
 		changed_image = (image + perturbation_zc).clamp(min=0, max=1)
 
 		loss, predictions = loss_func(model, changed_image)
