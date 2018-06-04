@@ -12,7 +12,7 @@ from utils import *
 import transforms
 
 from encoding import encode_binary
-from models import DecodingNet, DecodingDNN
+from models import DecodingNet
 
 from scipy.ndimage import filters
 from scipy import stats
@@ -33,7 +33,7 @@ def sweep(image, output_file, min_val, max_val, step, transform, code, model):
 
     while val <= max_val:
         transformed = transform(image, val)
-        preds = model.forward(transformed, distribution=p, n=96).mean(dim=0).data.cpu().numpy()
+        preds = model.forward(transformed, distribution=p, n=64).mean(dim=0).data.cpu().numpy()
         mse_loss = binary.mse_dist(preds, code)
         binary_loss = binary.distance(code, preds)
 
@@ -57,10 +57,11 @@ def sweep(image, output_file, min_val, max_val, step, transform, code, model):
     plt.cla()
 
 def test_transforms(model=None):
-    images = ["car.jpg"]
-    if model == None:
-        model = DecodingNet()
-    model.drawLastLayer('output/testviz.png')
+
+    images = ["house.png"]
+    if model == None: model = DecodingNet()
+    model.eval()
+
     for image_file in images:
         image = im.load("images/" + image_file)
         if image is None: continue

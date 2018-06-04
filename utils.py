@@ -1,7 +1,7 @@
 #utils.py
 
 import numpy as np
-import random, sys, os
+import random, sys, os, time
 
 from skimage import io, color
 
@@ -14,28 +14,40 @@ import random
 
 
 USE_CUDA = torch.cuda.is_available()
+DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 IMAGE_MAX = 255.0
-TARGET_SIZE = 32
+TARGET_SIZE = 8
 OUTPUT_DIR = "output/"
 
 def corrcoef(x):
-    mean_x = torch.mean(x, 1).unsqueeze(1)
-    xm = x.sub(mean_x.expand_as(x))
-    c = xm.mm(xm.t())
-    c = c / (x.size(1) - 1)
+	mean_x = torch.mean(x, 1).unsqueeze(1)
+	xm = x.sub(mean_x.expand_as(x))
+	c = xm.mm(xm.t())
+	c = c / (x.size(1) - 1)
 
-    # normalize covariance matrix
-    d = torch.diag(c)
-    stddev = torch.pow(d, 0.5)
-    c = c.div(stddev.expand_as(c))
-    c = c.div(stddev.expand_as(c).t())
+	# normalize covariance matrix
+	d = torch.diag(c)
+	stddev = torch.pow(d, 0.5)
+	c = c.div(stddev.expand_as(c))
+	c = c.div(stddev.expand_as(c).t())
 
-    # clamp between -1 and 1
-    # probably not necessary but numpy does it
-    c = torch.clamp(c, -1.0, 1.0)
+	# clamp between -1 and 1
+	# probably not necessary but numpy does it
+	c = torch.clamp(c, -1.0, 1.0)
 
-    return c
+	return c
 
+def zca(x):
+	sigma = torch.mm(x.t(), x) / x.shape[0]
+	U, S, _ = torch.svd(sigma)
+	pcs = torch.mm(torch.mm(U, torch.diag(1. / torch.sqrt(S + 1e-7))), U.t())
+
+	# Apply ZCA whitening
+	whitex = torch.mm(x, pcs)
+	return whitex
+
+def tve_loss(x):
+	return ((x[:,:-1,:] - x[:,1:,:])**2).sum() + ((x[:,:,:-1] - x[:,:,1:])**2).sum()
 
 def batched(datagen, batch_size=32):
 	arr = []
@@ -45,6 +57,10 @@ def batched(datagen, batch_size=32):
 			yield arr
 			arr = []
 	yield arr
+
+def elapsed(times=[time.time()]):
+	times.append(time.time())
+	return times[-1] - times[-2]
 
 
 """Image manipulation methods"""
@@ -71,8 +87,7 @@ class im(object):
 	@staticmethod
 	def torch(image):
 		x = Variable(torch.FloatTensor(image).permute(2, 0, 1))
-		if USE_CUDA: x = x.cuda()
-		return x
+		return x.to(DEVICE)
 
 	@staticmethod
 	def numpy(image):
@@ -99,8 +114,7 @@ class binary(object):
 	@staticmethod
 	def target(values):
 		values = Variable(torch.FloatTensor(np.array([float(x) for x in values])))
-		if USE_CUDA: values = values.cuda()
-		return values
+		return values.to(DEVICE)
 
 	@staticmethod
 	def redundant(values, n=3):

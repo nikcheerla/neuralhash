@@ -2,6 +2,10 @@
 import numpy as np
 import random, sys, os, json, glob
 
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,66 +16,79 @@ from utils import *
 import transforms
 from encoding import encode_binary
 from models import DecodingNet
+from logger import Logger
 
 from skimage.morphology import binary_dilation
-
-import matplotlib.pyplot as plt
 import IPython
 
+from testing import test_transforms
+
+
+
+logger = Logger("train", ("bce", "bits"))
 
 def p(x):
-	x = transforms.resize_rect(x)
-	x = transforms.rotate(transforms.scale(x), max_angle=90)
-	x = transforms.resize(x, rand_val=False, resize_val=224)
-	x = transforms.translate(x)
-	x = transforms.gauss(x, min_sigma=0.8, max_sigma=1.2)
-	return x
+    x = transforms.resize_rect(x)
+    x = transforms.rotate(transforms.scale(x, 0.6, 1.4), max_angle=30)
+    x = transforms.gauss(x, min_sigma=0.8, max_sigma=1.2)
+    x = transforms.translate(x)
+    x = transforms.identity(x)
+    return x
 
-def loss(model, image_batch):
+def loss_func(model, encoded_im, target):
+	
+	scores = model.forward(encoded_im, distribution=p, n=64) # (N, T)
+	predictions = scores.mean(dim=0)
+	bce_loss = F.binary_cross_entropy(scores, \
+		binary.target(target).repeat(64, 1))
 
-	features = torch.cat([model(x, distribution=p, n=8).unsqueeze(0) \
-		for x in image_batch], dim=0)
-	correlations = corrcoef(features.t())
-	correlations = correlations * (Variable(1 - torch.eye(TARGET_SIZE)).cuda())
-	correlations = torch.pow(correlations, 2)
-	print ("Mean: ", correlations.data.mean())
-	print ("Max: ", correlations.data.max())
-	return (correlations.mean()+correlations.max())
+	logger.step("bce", bce_loss)
 
+	return bce_loss, predictions.cpu().data.numpy().round(2)
+
+def create_targets():
+	return [(i == j) for i, j in product(range(TARGET_SIZE), range(TARGET_SIZE))]
 
 if __name__ == "__main__":
-	
+
 	model = DecodingNet()
-	optimizer = torch.optim.Adadelta(model.parameters(), lr=0.003)
+	model.train()
+	optimizer = torch.optim.Adadelta(model.classifier.parameters(), lr=1.5e-2)
 	
 	def data_generator():
-		files = glob.glob("/data/cats/*.jpg")
-		for image in random.sample(files, k=len(files)):
-			yield im.torch(im.load(image))
+		# path = "/home/RC/neuralhash/data/tiny-imagenet-200/test/images"
+		path = "data/colornet/*.jpg"
+		files = glob.glob(path)
+		while True:
+			img = im.load(random.choice(files))
+			if img is None: continue
+			yield img	
 
-	for epochs in range(0, 150):
-		for i, image_batch in enumerate(batched(data_generator(), batch_size=16)):
+	def checkpoint():
+		print (f"Saving model to {OUTPUT_DIR}train_test.pth")
+		model.save(OUTPUT_DIR + "train_test.pth")
 
-			error = loss(model, image_batch)
-			print ("Epoch {0}, Batch {1}, Loss {2:0.5f}".format(epochs, 
-				i, error.data.cpu().numpy().mean()))
-			optimizer.zero_grad()
-			error.backward()
-			optimizer.step()
+	logger.add_hook(checkpoint)
 
-		if epochs < 2: continue
-		model.save("/output/decorrelation.pth")
+	for i in range(0, 10000):
 
+		image = im.torch(next(data_generator()))
 		target = binary.random(n=TARGET_SIZE)
+
+		encoded_im = im.torch(encode_binary(image, model, target, \
+		 	verbose=False, max_iter=4))
 		
-		img = encode_binary(im.load("images/cat.jpg"), model, target=target, verbose=True)
-		im.save(img, "/output/cat_encoded.jpg")
+		loss, predictions = loss_func(model, encoded_im, target)
 
-		preds = binary.get(model(im.torch(img)))
-		print("Target: ", binary.str(target))
-		print ("Code: ", binary.str(preds))
-		print ("Diff: ", binary.distance(target, preds))
+		optimizer.zero_grad()
+		loss.backward()
+		optimizer.step() 
 
-	model.save("/output/decorrelation.pth")
+		logger.step ("bits", binary.distance(predictions, target))
+		#logger.step ("after", loss_func(model, image, target))
+
+		if (i+1) % 400 == 0:
+			test_transforms(model)
+	
 
 
