@@ -37,6 +37,16 @@ def corrcoef(x):
 
 	return c
 
+def zca(x):
+	sigma = torch.mm(x.t(), x) / x.shape[0]
+	U, S, _ = torch.svd(sigma)
+	pcs = torch.mm(torch.mm(U, torch.diag(1. / torch.sqrt(S + 1e-7))), U.t())
+
+	# Apply ZCA whitening
+	whitex = torch.mm(x, pcs)
+	return whitex
+
+
 def tve_loss(x):
 	return ((x[:,:-1,:] - x[:,1:,:])**2).sum() + ((x[:,:,:-1] - x[:,:,1:])**2).sum()
 

@@ -43,15 +43,12 @@ class DecodingNet(nn.Module):
     def __init__(self):
         super(DecodingNet, self).__init__()
 
-        self.features = models.vgg11(pretrained=True)
-        self.classifier = nn.Linear(25088, TARGET_SIZE*2)
+        self.features = models.squeezenet1_1(pretrained=True)
+        self.classifier = nn.Sequential(
+            nn.Linear(512*8, 4096),
+            nn.ReLU(inplace=True),
+            nn.Linear(4096, TARGET_SIZE*2))
         
-        w = self.classifier.weight.cpu().data.numpy()
-        q, r = np.linalg.qr(w.T)
-        q = q * 0.5775073
-
-        self.classifier.weight.data = torch.tensor(q.T, requires_grad=True)
-        self.features.eval()
         self.to(DEVICE)
 
     def forward(self, x, verbose=False, distribution=transforms.identity, 
@@ -64,9 +61,10 @@ class DecodingNet(nn.Module):
 
         x = torch.cat([distribution(x).unsqueeze(0) for i in range(0, n)], dim=0)
 
-        #vgg layers
+        #  layers
         x = self.features.features(x)
-
+        x = torch.cat([F.avg_pool2d(x, (x.shape[2]//2)), \
+                        F.max_pool2d(x, (x.shape[2]//2))], dim=1)
         x = x.view(x.size(0), -1)
         x = (x - x.mean(dim=1, keepdim=True))/(x.std(dim=1, keepdim=True))
 

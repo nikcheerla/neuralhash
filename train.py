@@ -16,11 +16,16 @@ from utils import *
 import transforms
 from encoding import encode_binary
 from models import DecodingNet
+from logger import Logger
 
 from skimage.morphology import binary_dilation
 import IPython
 
 from testing import test_transforms
+
+
+
+logger = Logger("train", ("bce", "bits"))
 
 def p(x):
     x = transforms.resize_rect(x)
@@ -31,10 +36,15 @@ def p(x):
     return x
 
 def loss_func(model, encoded_im, target):
-	predictions = model.forward(encoded_im, distribution=p, n=64) # (N, T)
-	correlations = corrcoef(predictions)
-	print ("Correlations: ", correlations.cpu().data.numpy())
-	return F.binary_cross_entropy(predictions, binary.target(target).repeat(64, 1))
+	
+	scores = model.forward(encoded_im, distribution=p, n=64) # (N, T)
+	predictions = scores.mean(dim=0)
+	bce_loss = F.binary_cross_entropy(scores, \
+		binary.target(target).repeat(64, 1))
+
+	logger.step("bce", bce_loss)
+
+	return bce_loss, predictions.cpu().data.numpy().round(2)
 
 def create_targets():
 	return [(i == j) for i, j in product(range(TARGET_SIZE), range(TARGET_SIZE))]
@@ -42,42 +52,41 @@ def create_targets():
 if __name__ == "__main__":
 
 	model = DecodingNet()
-	optimizer = torch.optim.Adadelta(model.classifier.parameters(), lr=1e-2)
+	optimizer = torch.optim.Adadelta(model.classifier.parameters(), lr=2e-2)
 	
 	def data_generator():
 		# path = "/home/RC/neuralhash/data/tiny-imagenet-200/test/images"
-		path = "data/colornet/2vpu9L.jpg"
+		path = "data/colornet/*.jpg"
 		files = glob.glob(path)
 		while True:
 			img = im.load(random.choice(files))
 			if img is None: continue
-			yield img
+			yield img	
 
-	losses = []
+	def checkpoint():
+		print (f"Saving model to {OUTPUT_DIR}train_test.pth")
+		model.save(OUTPUT_DIR + "train_test.pth")
 	
+	logger.add_hook(checkpoint)
 
-	for i in range(0, 100):
+	for i in range(0, 4000):
 
-		image = next(data_generator())
+		image = im.torch(next(data_generator()))
 		target = binary.random(n=TARGET_SIZE)
 
-		encoded_im = im.torch(encode_binary(image, model, target, max_iter=3))
+		encoded_im = im.torch(encode_binary(image, model, target, \
+		 	verbose=False, max_iter=3))
 		
-		loss = loss_func(model, encoded_im, target)
+		loss, predictions = loss_func(model, encoded_im, target)
 
 		optimizer.zero_grad()
 		loss.backward()
 		optimizer.step() 
 
-		losses.append(loss.cpu().data.numpy())
-
-		# if i % 10 == 0:
-		# 	model.drawLastLayer(OUTPUT_DIR + "mat_viz_" + str(i) + ".png")
-
-		print ("train loss = ", losses[-1])
-		print ("loss after step = ", loss_func(model, encoded_im, target).cpu().data.numpy())
+		logger.step ("bits", binary.distance(predictions, target))
+		#logger.step ("after", loss_func(model, image, target))
 
 	test_transforms(model)
-	model.save(OUTPUT_DIR + "train_test.pth")
+	
 
 
