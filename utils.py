@@ -1,7 +1,7 @@
 #utils.py
 
 import numpy as np
-import random, sys, os
+import random, sys, os, time
 
 from skimage import io, color
 
@@ -16,7 +16,7 @@ import random
 USE_CUDA = torch.cuda.is_available()
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 IMAGE_MAX = 255.0
-TARGET_SIZE = 6
+TARGET_SIZE = 8
 OUTPUT_DIR = "output/"
 
 def corrcoef(x):
@@ -46,7 +46,6 @@ def zca(x):
 	whitex = torch.mm(x, pcs)
 	return whitex
 
-
 def tve_loss(x):
 	return ((x[:,:-1,:] - x[:,1:,:])**2).sum() + ((x[:,:,:-1] - x[:,:,1:])**2).sum()
 
@@ -58,6 +57,10 @@ def batched(datagen, batch_size=32):
 			yield arr
 			arr = []
 	yield arr
+
+def elapsed(times=[time.time()]):
+	times.append(time.time())
+	return times[-1] - times[-2]
 
 
 """Image manipulation methods"""

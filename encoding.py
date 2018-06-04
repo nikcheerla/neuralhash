@@ -21,15 +21,18 @@ import IPython
 
 import transforms
 
-EPSILON = 2e-2
+EPSILON = 8e-3
 MIN_LOSS = 2e-3
-BATCH_SIZE = 80
+BATCH_SIZE = 400
 
 
 def encode_binary(image, model, target, max_iter=200, verbose=False):
 
+	im.save(image, file=f"{OUTPUT_DIR}original.jpg")
+
 	if not isinstance(image, torch.Tensor):
 		image = im.torch(image)
+
 	perturbation = nn.Parameter(0.03*torch.randn(image.size()).to(DEVICE)+0.0)
 
 	# returns an image after a series of transformations

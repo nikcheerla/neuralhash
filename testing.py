@@ -12,7 +12,7 @@ from utils import *
 import transforms
 
 from encoding import encode_binary
-from models import DecodingNet, DilatedDecodingNet
+from models import DecodingNet
 
 # returns an image after a series of transformations
 def p(x):
@@ -53,9 +53,9 @@ def sweep(image, output_file, min_val, max_val, step, transform, code, model):
     plt.cla()
 
 def test_transforms(model=None):
-    images = ["car.jpg"]
-    if model == None:
-        model = DecodingNet()
+    images = ["house.png"]
+    if model == None: model = DecodingNet()
+    model.eval()
 
     for image_file in images:
         image = im.load("images/" + image_file)
@@ -68,10 +68,7 @@ def test_transforms(model=None):
             lambda x, val: transforms.rotate(x, rand_val=False, theta=val), code, model)
         sweep(im.torch(encoded_img), image_file[:-4] + "_scale.jpg", 0.5, 1.5, 0.02, 
             lambda x, val: transforms.scale(x, rand_val=False, scale_val=val), code, model)
-        # sweep(im.torch(encoded_img), image_file[:-4] + "_translatex.jpg", -50.0, 50.0, 5.0, 
-        #     lambda x, val: transforms.translate(x, rand_val=False, shift_vals=(0, val)), code, model)
-        # sweep(im.torch(encoded_img), image_file[:-4] + "_translatey.jpg", -50.0, 50.0, 5, 
-        #     lambda x, val: transforms.translate(x, rand_val=False, shift_vals=(val, 0)), code, model)
+
 
 def compare_image(original_file, transformed_file):
     original_img = im.load(original_file)

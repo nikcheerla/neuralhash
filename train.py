@@ -52,7 +52,8 @@ def create_targets():
 if __name__ == "__main__":
 
 	model = DecodingNet()
-	optimizer = torch.optim.Adadelta(model.classifier.parameters(), lr=2e-2)
+	model.train()
+	optimizer = torch.optim.Adadelta(model.classifier.parameters(), lr=1.5e-2)
 	
 	def data_generator():
 		# path = "/home/RC/neuralhash/data/tiny-imagenet-200/test/images"
@@ -66,16 +67,16 @@ if __name__ == "__main__":
 	def checkpoint():
 		print (f"Saving model to {OUTPUT_DIR}train_test.pth")
 		model.save(OUTPUT_DIR + "train_test.pth")
-	
+
 	logger.add_hook(checkpoint)
 
-	for i in range(0, 4000):
+	for i in range(0, 10000):
 
 		image = im.torch(next(data_generator()))
 		target = binary.random(n=TARGET_SIZE)
 
 		encoded_im = im.torch(encode_binary(image, model, target, \
-		 	verbose=False, max_iter=3))
+		 	verbose=False, max_iter=4))
 		
 		loss, predictions = loss_func(model, encoded_im, target)
 
@@ -86,7 +87,8 @@ if __name__ == "__main__":
 		logger.step ("bits", binary.distance(predictions, target))
 		#logger.step ("after", loss_func(model, image, target))
 
-	test_transforms(model)
+		if (i+1) % 400 == 0:
+			test_transforms(model)
 	
 
 
