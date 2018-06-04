@@ -30,8 +30,7 @@ def sweep(image, output_file, min_val, max_val, step, transform, code, model):
     val = min_val
     res_bin = []
     res_mse = []
-    # model.orient(image, 0)
-    print(avg_gradient(image.cpu().data.numpy()))
+
     while val <= max_val:
         transformed = transform(image, val)
         preds = model.forward(transformed, distribution=p, n=96).mean(dim=0).data.cpu().numpy()
@@ -40,11 +39,8 @@ def sweep(image, output_file, min_val, max_val, step, transform, code, model):
 
         res_bin.append((val, binary_loss))
         res_mse.append((val, mse_loss))
-        # model.orient(transformed, val)
-        avg_grad = avg_gradient(transformed.cpu().data.numpy())
-        print(avg_grad, np.round(val, 4), np.round(avg_grad - val, 4))
 
-        # print("mse: ", np.round(mse_loss, 4))
+        print("mse: ", np.round(mse_loss, 4))
         val += step
 
     x, bits_off = zip(*res_bin)
@@ -60,30 +56,6 @@ def sweep(image, output_file, min_val, max_val, step, transform, code, model):
     plt.savefig(OUTPUT_DIR + output_file); 
     plt.cla()
 
-def avg_gradient(image):
-    grey = np.mean(image, axis=2)
-    blur = filters.gaussian_filter(grey, 1)
-    # Kernel for Gradient in x-direction
-    Kx = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], np.int32)
-    # Kernel for Gradient in y-direction
-    Ky = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]], np.int32)
-
-    # Apply kernels to the image
-    Ix = filters.convolve(grey, Kx)
-    Iy = filters.convolve(grey, Ky)
-
-    # return the hypothenuse of (Ix, Iy)
-    D = np.arctan2(Ix, Iy)
-    # print(Ix)
-    bins = np.linspace(-1*np.pi, np.pi, 40)
-    quantized = np.digitize(D, bins)
-    mode, count = stats.mode(quantized, axis=None)
-    # print(quantized)
-    # print(bins[mode[0]])
-    # print(stats.mode(quantized, axis=None))
-    # print(bins[mode], np.mean(D))
-    return bins[mode[0]]
-
 def test_transforms(model=None):
     images = ["car.jpg"]
     if model == None:
@@ -95,12 +67,11 @@ def test_transforms(model=None):
         print(avg_gradient(image))
         code = binary.random(n=TARGET_SIZE)
         encoded_img = encode_binary(image, model, target=code, verbose=True)
-        avg_gradient(encoded_img)
 
         sweep(im.torch(encoded_img), image_file[:-4] + "_rotate.jpg", -0.6, 0.6, 0.02, 
             lambda x, val: transforms.rotate(x, rand_val=False, theta=val), code, model)
-        # sweep(im.torch(encoded_img), image_file[:-4] + "_scale.jpg", 0.5, 1.5, 0.02, 
-        #     lambda x, val: transforms.scale(x, rand_val=False, scale_val=val), code, model)
+        sweep(im.torch(encoded_img), image_file[:-4] + "_scale.jpg", 0.5, 1.5, 0.02, 
+            lambda x, val: transforms.scale(x, rand_val=False, scale_val=val), code, model)
         # sweep(im.torch(encoded_img), image_file[:-4] + "_noise.jpg", 0, 0.5, 0.005, 
         #     lambda x, val: transforms.noise(x, max_noise_val=val), code, model)
         # sweep(im.torch(encoded_img), image_file[:-4] + "_translatex.jpg", -50.0, 50.0, 5.0, 
