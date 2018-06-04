@@ -30,6 +30,10 @@ def p(x):
     x = transforms.identity(x)
     return x
 
+def simple(x):
+    x = transforms.rotate(transforms.scale(x, 0.6, 1.4), max_angle=30)
+    return x
+
 def loss_func(model, transformed_ims, targets):
 	targets = torch.cat([binary.target(target).unsqueeze(0) for target in targets], dim=0)
 	predictions = model.forward_batch(transformed_ims) # (N, T)
@@ -38,7 +42,7 @@ def loss_func(model, transformed_ims, targets):
 	# return F.binary_cross_entropy(predictions, binary.target(targets[0]).repeat(64, 1))
 
 def loss_func2(model, encoded_im, target):
-	predictions = model.forward(encoded_im, distribution=p, n=64) # (N, T)
+	predictions = model.forward(p(encoded_im), distribution=p, n=64) # (N, T)
 	return F.binary_cross_entropy(predictions, binary.target(target).repeat(64, 1))
 
 def encode_images(model, batch, targets):
@@ -74,13 +78,13 @@ if __name__ == "__main__":
 			yield img
 
 	losses = []
-	targets = create_targets()#[binary.random(n=TARGET_SIZE) for x in range(20)]
-	for i in range(0, 10):
+	targets = [binary.random(n=TARGET_SIZE) for x in range(200)]
+	for i in range(0, 1):
 		for target in targets:
 			image = next(data_generator())
 			# ind = random.randint(0,len(targets)-1)
 			# target = binary.random(n=TARGET_SIZE)#targets[ind]
-			encoded_im = im.torch(encode_binary(image, model, target, max_iter=1, verbose=False))
+			encoded_im = im.torch(encode_binary(image, model, target, max_iter=5, verbose=False))
 			loss = loss_func2(model, encoded_im, target)
 			# batch = next(batched(data_generator(), batch_size=BATCH_SIZE))
 			# targets = [binary.random(n=TARGET_SIZE) for x in range(BATCH_SIZE)]
@@ -88,16 +92,16 @@ if __name__ == "__main__":
 			# transformed_ims = torch.cat([p(x).unsqueeze(0) for x in encoded_ims], dim=0)
 			# loss = loss_func(model, transformed_ims, targets)
 
-		optimizer.zero_grad()
-		loss.backward()
-		optimizer.step()
+			optimizer.zero_grad()
+			loss.backward()
+			optimizer.step()
 
-		losses.append(loss.cpu().data.numpy())
+			losses.append(loss.cpu().data.numpy())
 
-		if i % 10 == 0:
-			model.drawLastLayer(OUTPUT_DIR + "mat_viz_" + str(i) + ".png")
-		print("train loss = ", np.mean(losses[-1]))
-		# print("loss after step = ", loss_func(model, encoded_im, target).cpu().data.numpy())
+			if i % 10 == 0:
+				model.drawLastLayer(OUTPUT_DIR + "mat_viz_" + str(i) + ".png")
+			print("train loss = ", np.mean(losses[-1]))
+			# print("loss after step = ", loss_func(model, encoded_im, target).cpu().data.numpy())
 
 	test_transforms(model)
 	model.save(OUTPUT_DIR + "train_test.pth")

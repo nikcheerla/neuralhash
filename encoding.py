@@ -28,7 +28,7 @@ MIN_LOSS = 5e-3
 BATCH_SIZE = 80
 
 
-def encode_binary(image, model, target, max_iter=200, verbose=False):
+def encode_binary(image, model, target, max_iter=100, verbose=False):
     
     EPSILON = 2e-2
 
@@ -75,7 +75,7 @@ def encode_binary(image, model, target, max_iter=200, verbose=False):
             # perform projected gradient descent by norm bounding the perturbation
             # eps_c = eps.clamp(min=0, max=EPSILON)
             perturbation_zc = (perturbation - perturbation.mean())/(perturbation.std()) * eps
-            changed_image = (image + perturbation_zc).clamp(min=0.1, max=0.99)
+            changed_image = (image + perturbation_zc).clamp(min=0, max=1)
 
             loss, predictions = loss_func(model, changed_image)
 
@@ -96,7 +96,7 @@ def encode_binary(image, model, target, max_iter=200, verbose=False):
             # perturbation_zc = perturbation / perturbation.norm(2) * 5
             perturbation_zc = (perturbation - perturbation.mean())/(perturbation.std()) * eps
 
-            changed_image = (image + perturbation_zc).clamp(min=0.1, max=0.99)
+            changed_image = (image + perturbation_zc).clamp(min=0, max=1)
 
             if verbose:
                 # print("Epsilon: ", eps.cpu().data.numpy())
@@ -117,7 +117,7 @@ def encode_binary(image, model, target, max_iter=200, verbose=False):
         if smooth_loss <= MIN_LOSS:
             break
 
-    print(f"Epsilon: {EPSILON}")
+    # print(f"Epsilon: {EPSILON}")
     print ("Loss: ", np.mean(losses[-1]))
     return im.numpy(changed_image)
 

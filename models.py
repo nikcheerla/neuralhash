@@ -43,12 +43,29 @@ class GramMatrix(nn.Module):
 binary value of size target_size """
 class DecodingNet(nn.Module):
 
+    def orient(self, x, base):
+        grey = torch.mean(x, dim=0).unsqueeze(0).unsqueeze(0)
+        # print(grey.size())
+        Kx = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], np.float32)
+        Ky = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]], np.float32)
+        Kx = torch.tensor(Kx).cuda().unsqueeze(0).unsqueeze(0)
+        Ky = torch.tensor(Ky).cuda().unsqueeze(0).unsqueeze(0)
+        Ix = F.conv2d(grey, weight=Kx, padding=2)[0,0]
+        Iy = F.conv2d(grey, weight=Ky, padding=2)[0,0]
+
+        D = torch.atan2(Ix, Iy)
+        # print(Ix)
+        # print(D.max(), D.min())
+        # print(D.size())
+        print(D.mean().cpu().data.numpy() + base)
+
     def __init__(self):
         super(DecodingNet, self).__init__()
 
         self.features = models.vgg11(pretrained=True)
         self.features.classifier = nn.Linear(25088, TARGET_SIZE*2)
         self.gram = GramMatrix()
+
         # mask = Variable(torch.bernoulli(torch.ones(TARGET_SIZE*2, 25088)*0.05))/0.05
         # self.features.classifier.weight.data = \
         #     self.features.classifier.weight.data*mask.data
@@ -60,6 +77,8 @@ class DecodingNet(nn.Module):
     def forward(self, x, verbose=False, distribution=transforms.identity, 
                     n=1, return_variance=False):
 
+        # self.orient(x)
+        # self.orient(transforms.rotate(x, rand_val=False, theta=0.2))
         # make sure to center the image and divide by standard deviation
         x = torch.cat([((x[0]-0.485)/(0.229)).unsqueeze(0),
             ((x[1]-0.456)/(0.224)).unsqueeze(0),
@@ -82,10 +101,31 @@ class DecodingNet(nn.Module):
 
         return predictions
 
+    def forward_batch(self, x):
+
+        # make sure to center the image and divide by standard deviation
+        x = torch.cat([((x[:,0]-0.485)/(0.229)).unsqueeze(1),
+            ((x[:,1]-0.456)/(0.224)).unsqueeze(1),
+            ((x[:,2]-0.406)/(0.225)).unsqueeze(1)], dim=1)
+
+        #vgg layers
+        for layer in list(self.features.features._modules.values()):
+            x = layer(x)
+
+        # x = self.gram(x)
+        x = x.view(x.size(0), -1)
+        x = (x - x.mean(dim=1, keepdim=True))/(x.std(dim=1, keepdim=True))
+
+        x = self.features.classifier(x)
+        x = x.view(x.size(0), TARGET_SIZE, 2)#.mean(dim=0) # reshape and average
+
+        predictions = F.softmax(x, dim=2)[:,:, 0]
+
+        return predictions
+
     def drawLastLayer(self, file_path):
         img = self.features.classifier.weight.cpu().data.numpy()
-        print(img)
-        plt.imshow(img, cmap='hot')
+        plt.imshow(img)
         plt.savefig(file_path)
 
     def load(self, file_path):
