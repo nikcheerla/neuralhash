@@ -22,7 +22,7 @@ import IPython
 
 import transforms
 
-EPSILON = 8e-3
+EPSILON = 9e-3
 MIN_LOSS = 2e-3
 BATCH_SIZE = 96
 
@@ -41,7 +41,7 @@ def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=Fa
 	
 	returnPerturbation = True
 	if not isinstance(perturbation, torch.Tensor):
-		perturbation = nn.Parameter(0.03*torch.randn(image.size()).to(DEVICE)+0.0)
+		perturbation = nn.Parameter(0.03*torch.randn(images.size()).to(DEVICE)+0.0)
 		returnPerturbation = False
 
 	opt = torch.optim.Adam([perturbation], lr=5e-1)

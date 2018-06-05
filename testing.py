@@ -55,9 +55,12 @@ def sweep(images, targets, model, transform, min_val, max_val, samples=10, outpu
     plt.savefig(OUTPUT_DIR + output_file); 
     plt.cla()
 
-def test_transforms(model=None, image_files=["images/house.png"]):
+def test_transforms(model=None, image_files=["images/house.png"], name="test"):
+
+    print(image_files)
 
     images = [im.load(image) for image in image_files]
+    images = [image for image in images if image is not None]
     images = im.stack(images)
     targets = [binary.random(n=TARGET_SIZE) for _ in range(0, len(images))]
 
@@ -69,12 +72,12 @@ def test_transforms(model=None, image_files=["images/house.png"]):
     sweep(encoded_images, targets, model,
             transform=lambda x, val: transforms.rotate(x, rand_val=False, theta=val),
             min_val=-0.6, max_val=0.6, samples=60,
-            output_file="test_rotate.jpg")
+            output_file=f"{name}_rotate.jpg")
 
     sweep(encoded_images, targets, model,
             transform=lambda x, val: transforms.scale(x, rand_val=False, scale_val=val),
             min_val=0.6, max_val=1.4, samples=60,
-            output_file="test_scale.jpg") 
+            output_file=f"{name}_scale.jpg") 
 
 if __name__ == "__main__":
     test_transforms()

@@ -25,8 +25,8 @@ from testing import test_transforms
 
 
 DATA_PATH = 'data/amnesia'
-logger = Logger("train", ("bce", "bits"), print_every=1)
-EPSILON = 8e-3
+logger = Logger("train", ("loss", "bits"), print_every=4, plot_every=20)
+EPSILON = 9e-3
 
 def loss_func(model, x, targets):
 	scores = model.forward(x)
@@ -50,12 +50,12 @@ def init_data(input_path, output_path, n=100):
 def save_data(input_path, output_path):
 	files = glob.glob(f'{input_path}/*.pth')
 	for file in files:
-		perturbation, image, target = torch.load(random.choice(files))
+		perturbation, image, target, k = torch.load(random.choice(files))
 
 		perturbation_zc = perturbation/perturbation.norm(2)*EPSILON*(perturbation.nelement()**0.5)
 		changed_image = (image + perturbation_zc).clamp(min=0, max=1)
 
-		im.save(im.numpy(image), file=f"{output_path}special/orig_{target}.jpg")
+		im.save(im.numpy(image), file=f"{output_path}orig_{target}.jpg")
 		im.save(im.numpy(changed_image), file=f"{output_path}changed_{target}.jpg")
 
 if __name__ == "__main__":	
@@ -69,10 +69,10 @@ if __name__ == "__main__":
 		return x
 
 	model = nn.DataParallel(DecodingNet(n=48, distribution=p))
-	optimizer = torch.optim.Adadelta(model.module.classifier.parameters(), lr=8e-2)
+	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=1e-3)
 	model.train()
 	
-	init_data('data/colornet', DATA_PATH, n=100)
+	init_data('data/colornet', DATA_PATH, n=5000)
 
 	def data_generator():
 		path = f"{DATA_PATH}/*.pth"
@@ -96,6 +96,7 @@ if __name__ == "__main__":
 		 	model, verbose=False, max_iter=1, perturbation=perturbations)
 
 		loss, predictions = loss_func(model, encoded_ims, targets)
+		logger.step ("loss", loss)
 
 		optimizer.zero_grad()
 		loss.backward()
@@ -106,10 +107,14 @@ if __name__ == "__main__":
 
 		#save encoded_im, target and perturbation
 		for new_p, orig_image, target, k in zip(new_perturbations, orig_images, targets, ks):
-			torch.save((new_p, orig_image, target, k), f'{DATA_PATH}/{target}_{k}.pth')
+			torch.save((torch.tensor(new_p.data), torch.tensor(orig_image.data), target, k), f'{DATA_PATH}/{target}_{k}.pth')
 
-		if (i+1) % 3 == 0:
-			test_transforms(model, images=[random.choice(glob.glob('data/colornet/')[:500])])
-			# save_data(DATA_PATH, OUTPUT_DIR)
+		if (i+1) % 40 == 0:
+			file = random.choice(glob.glob('data/colornet/*')[:500])
+			test_transforms(model, image_files=[file], name=file.split('/')[-1])
+	
+		if i == 600:
+			break
 
+	save_data(DATA_PATH, OUTPUT_DIR)
 	# test_transforms(model, images=os.listdir(OUTPUT_DIR+"special/")[0:1])
