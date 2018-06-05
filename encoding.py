@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-import random, sys, os, json
+import random, sys, os, json, glob
 
 import torch
 import torch.nn as nn
@@ -15,6 +15,7 @@ from torch.autograd import Variable
 
 from models import DecodingNet
 from torchvision import models
+from logger import Logger
 from utils import *
 
 import IPython
@@ -23,18 +24,53 @@ import transforms
 
 EPSILON = 8e-3
 MIN_LOSS = 2e-3
-BATCH_SIZE = 400
+BATCH_SIZE = 96
 
-def encode_binary(image, model, target, max_iter=200, verbose=False):
 
-	im.save(image, file=f"{OUTPUT_DIR}original.jpg")
+def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=False):
 
-	if not isinstance(image, torch.Tensor):
-		image = im.torch(image)
+	logger = Logger("encoding", ("loss", "bits"), verbose=verbose, plot_every=20)
 
-	perturbation = nn.Parameter(0.03*torch.randn(image.size()).to(DEVICE)+0.0)
+	def loss_func(model, x):
+		scores = model.forward(x)
+		predictions = scores.mean(dim=1)
+		score_targets = binary.target(targets).unsqueeze(1).expand_as(scores)
 
-	# returns an image after a series of transformations
+		return F.binary_cross_entropy(scores, score_targets), \
+			predictions.cpu().data.numpy().round(2)
+	
+	perturbation = nn.Parameter(0.03*torch.randn(images.size()).to(DEVICE)+0.0)
+	opt = torch.optim.Adam([perturbation], lr=5e-1)
+	changed_images = images.detach()
+
+	def checkpoint():
+		im.save(im.numpy(changed_images[0]), file=f"{OUTPUT_DIR}encoding_changed.jpg")
+	
+	im.save(im.numpy(images[0]), file=f"{OUTPUT_DIR}encoding_original.jpg")
+	logger.add_hook(checkpoint)
+
+	for i in range(0, max_iter+1):
+
+		perturbation_zc = perturbation/perturbation.view(perturbation.shape[0], -1)\
+			.norm(2, dim=1, keepdim=True).unsqueeze(2).unsqueeze(2).expand_as(perturbation)\
+			*EPSILON*(perturbation[0].nelement()**0.5)
+
+		changed_images = (images + perturbation_zc).clamp(min=0.0, max=1.0)
+
+		loss, predictions = loss_func(model, changed_images)
+		loss.backward()
+		opt.step(); opt.zero_grad()
+
+		error = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
+		logger.step('loss', loss)
+		logger.step('bits', error)
+
+	return changed_images.detach()
+
+
+
+if __name__ == "__main__":
+	
 	def p(x):
 		x = transforms.resize_rect(x)
 		x = transforms.rotate(transforms.scale(x, 0.6, 1.4), max_angle=30)
@@ -43,68 +79,13 @@ def encode_binary(image, model, target, max_iter=200, verbose=False):
 		x = transforms.identity(x)
 		return x
 
-	# returns the loss for the image
-	def loss_func(model, x):
-		scores = model.forward(x, distribution=p, n=BATCH_SIZE, return_variance=False) # (N, T)
-		predictions = scores.mean(dim=0)
-		#smoothness_loss = tv_loss(x, 2e-2) #second parameter is tv_loss
-		return F.binary_cross_entropy(scores, binary.target(target).repeat(BATCH_SIZE, 1)), \
-			predictions.cpu().data.numpy().round(2)
-		# return F.mse_loss(predictions, binary.target(target).repeat(BATCH_SIZE, 1)), \
-		#             predictions.mean(dim=0).cpu().data.numpy().round(2)
-	
-	alpha, beta, gamma = 1, 1e-6, 0.01
-	hinge = 0.3
+	model = nn.DataParallel(DecodingNet(n=48, distribution=p))
+	model.eval()
 
-	opt = torch.optim.Adam([perturbation], lr=2e-1)
-	losses, preds = [], []
+	images = [im.load(image) for image in glob.glob("data/colornet/*.jpg")[0:1]]
+	images = im.stack(images)
+	targets = [binary.random(n=TARGET_SIZE) for _ in range(0, len(images))]
 
-	for i in range(0, max_iter+1):
-		#print('shape: ' + str(image.size()))
-		opt.zero_grad()
-
-		perturbation_zc = perturbation/perturbation.norm(2)*EPSILON*(perturbation.nelement()**0.5)
-		changed_image = (image + perturbation_zc).clamp(min=0, max=1)
-
-		loss, predictions = loss_func(model, changed_image)
-		#loss += tve_loss(perturbation) * 2e-3
-		#loss += tv_loss(perturbation
-		# perceptual_loss = beta*tve_loss(changed_image) + gamma*perturbation.norm(2)
-		# robustness_loss = alpha*((mean_loss-hinge).clamp(min=0))
-		# loss = perceptual_loss + robustness_loss
-		loss.backward()
-		opt.step()
-
-		preds.append(predictions)
-		losses.append(loss.cpu().data.numpy())
-
-		if verbose and i % 20 == 0:
-			# print("Epsilon: ", eps.cpu().data.numpy())
-			# print (perceptual_loss.cpu().data.numpy(), robustness_loss.cpu().data.numpy())
-			print ("Loss: ", np.mean(losses[-20:]))
-
-			im.save(im.numpy(perturbation), file=f"{OUTPUT_DIR}perturbation.jpg")
-			im.save(im.numpy(changed_image), file=f"{OUTPUT_DIR}changed_image.jpg")
-
-			plt.plot(np.array(preds)); 
-			plt.savefig(OUTPUT_DIR + "preds.jpg"); plt.cla()
-			plt.plot(losses); 
-			plt.savefig(OUTPUT_DIR + "loss.jpg"); plt.cla()
-
-			pred = binary.get(np.mean(preds[-20:], axis=0))
-			print ("Modified prediction: ", binary.str(pred), binary.distance(pred, target))
-
-		smooth_loss = np.mean(losses[-20:])
-		if smooth_loss <= MIN_LOSS:
-			break
-
-	if verbose: print ("Loss: ", np.mean(losses[-1]))
-	return im.numpy(changed_image)
-
-if __name__ == "__main__":
-	target = binary.random(n=TARGET_SIZE)
-	model = DecodingNet()
-	print("Target: ", binary.str(target))
-	encode_binary(im.load("images/car.jpg"), model, target=target, verbose=True)
+	encode_binary(images, targets, model, verbose=True)
 
 

@@ -44,6 +44,9 @@ def monitor_process(process, run_data):
 monitor_process(process, run_data)
 
 shutil.copytree("output", f"jobs/{run_name}/output")
+shutil.rmtree("output/")
+os.makedirs("output/")
+
 yaml.safe_dump(run_log, open("jobs/runlog.yml", 'w'), \
 		allow_unicode=True, default_flow_style=False)
 yaml.safe_dump(run_data[run_name], open(f"jobs/{run_name}/comments.yml", 'w'), \

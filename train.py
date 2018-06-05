@@ -35,6 +35,16 @@ def p(x):
     x = transforms.identity(x)
     return x
 
+# returns the loss for the image
+def loss_func(model, x):
+	scores = model.forward(x, distribution=p, n=BATCH_SIZE, return_variance=False) # (N, T)
+	predictions = scores.mean(dim=0)
+	logger = 
+	return F.binary_cross_entropy(scores, binary.target(target).expand(BATCH_SIZE, TARGET_SIZE)), \
+		predictions.cpu().data.numpy().round(2)
+	# return F.mse_loss(predictions, binary.target(target).repeat(BATCH_SIZE, 1)), \
+	#             predictions.mean(dim=0).cpu().data.numpy().round(2)
+
 def loss_func(model, encoded_im, target):
 	
 	scores = model.forward(encoded_im, distribution=p, n=64) # (N, T)
@@ -56,13 +66,12 @@ if __name__ == "__main__":
 	optimizer = torch.optim.Adadelta(model.classifier.parameters(), lr=1.5e-2)
 	
 	def data_generator():
-		# path = "/home/RC/neuralhash/data/tiny-imagenet-200/test/images"
-		path = "data/colornet/*.jpg"
-		files = glob.glob(path)
+
+		files = glob.glob("data/colornet/*.jpg")
 		while True:
 			img = im.load(random.choice(files))
 			if img is None: continue
-			yield img	
+			yield img, target	
 
 	def checkpoint():
 		print (f"Saving model to {OUTPUT_DIR}train_test.pth")
@@ -70,22 +79,16 @@ if __name__ == "__main__":
 
 	logger.add_hook(checkpoint)
 
-	for i in range(0, 10000):
-
-		image = im.torch(next(data_generator()))
-		target = binary.random(n=TARGET_SIZE)
-
-		encoded_im = im.torch(encode_binary(image, model, target, \
-		 	verbose=False, max_iter=4))
-		
-		loss, predictions = loss_func(model, encoded_im, target)
+	for images, targets in batched(data_generator()):
+		images = im.stack(images)
+		encoded_images = encode_binary(images, model, target, verbose=False, max_iter=4)
+		loss, predictions = loss_func(model, encoded_images, target)
 
 		optimizer.zero_grad()
 		loss.backward()
 		optimizer.step() 
 
 		logger.step ("bits", binary.distance(predictions, target))
-		#logger.step ("after", loss_func(model, image, target))
 
 		if (i+1) % 400 == 0:
 			test_transforms(model)

@@ -1,7 +1,7 @@
 from __future__ import print_function
 import IPython
 
-import random, sys, os, glob
+import random, sys, os, glob, tqdm
 
 import matplotlib as mpl
 mpl.use('Agg')
@@ -17,6 +17,7 @@ from models import DecodingNet
 from scipy.ndimage import filters
 from scipy import stats
 
+
 # returns an image after a series of transformations
 def p(x):
     x = transforms.resize_rect(x)
@@ -26,22 +27,20 @@ def p(x):
     x = transforms.resize(x, rand_val=False, resize_val=224)
     return x
 
-def sweep(image, output_file, min_val, max_val, step, transform, code, model):
-    val = min_val
+def sweep(images, targets, model, transform, min_val, max_val, samples=10, output_file="plot.jpg"):
+    
     res_bin = []
     res_mse = []
 
-    while val <= max_val:
-        transformed = transform(image, val)
-        preds = model.forward(transformed, distribution=p, n=64).mean(dim=0).data.cpu().numpy()
-        mse_loss = binary.mse_dist(preds, code)
-        binary_loss = binary.distance(code, preds)
+    for val in tqdm.tqdm(np.linspace(min_val, max_val, samples), ncols=30):
+        transformed = transform(images, val)
+        predictions = model(transformed).mean(dim=1).cpu().data.numpy()
+
+        mse_loss = np.mean([binary.mse_dist(x, y) for x, y in zip(predictions, targets)])
+        binary_loss = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
 
         res_bin.append((val, binary_loss))
         res_mse.append((val, mse_loss))
-
-        print("mse: ", np.round(mse_loss, 4))
-        val += step
 
     x, bits_off = zip(*res_bin)
     x, mse = zip(*res_mse)
@@ -56,40 +55,28 @@ def sweep(image, output_file, min_val, max_val, step, transform, code, model):
     plt.savefig(OUTPUT_DIR + output_file); 
     plt.cla()
 
-def test_transforms(model=None):
+def test_transforms(image_files=["images/house.png"], model=None):
 
-    images = ["house.png"]
-    if model == None: model = DecodingNet()
+    images = [im.load(image) for image in image_files]
+    images = im.stack(images)
+    targets = [binary.random(n=TARGET_SIZE) for _ in range(0, len(images))]
+
+    if model == None: model = DecodingNet(distribution=p, n=64)
     model.eval()
 
-    for image_file in images:
-        image = im.load("images/" + image_file)
-        if image is None: continue
+    encoded_images = encode_binary(images, targets, model, verbose=True)
+    
+    sweep(encoded_images, targets, model,
+            transform=lambda x, val: transforms.rotate(x, rand_val=False, theta=val),
+            min_val=-0.6, max_val=0.6, samples=60,
+            output_file="test_rotate.jpg")
 
-        code = binary.random(n=TARGET_SIZE)
-        encoded_img = encode_binary(image, model, target=code, verbose=True)
+    sweep(encoded_images, targets, model,
+            transform=lambda x, val: transforms.scale(x, rand_val=False, scale_val=val),
+            min_val=0.6, max_val=1.4, samples=60,
+            output_file="test_scale.jpg") 
 
-        sweep(im.torch(encoded_img), image_file[:-4] + "_rotate.jpg", -0.6, 0.6, 0.02, 
-            lambda x, val: transforms.rotate(x, rand_val=False, theta=val), code, model)
-        sweep(im.torch(encoded_img), image_file[:-4] + "_scale.jpg", 0.5, 1.5, 0.02, 
-            lambda x, val: transforms.scale(x, rand_val=False, scale_val=val), code, model)
-        # sweep(im.torch(encoded_img), image_file[:-4] + "_noise.jpg", 0, 0.5, 0.005, 
-        #     lambda x, val: transforms.noise(x, max_noise_val=val), code, model)
-        # sweep(im.torch(encoded_img), image_file[:-4] + "_translatex.jpg", -50.0, 50.0, 5.0, 
-        #     lambda x, val: transforms.translate(x, rand_val=False, shift_vals=(0, val)), code, model)
-        # sweep(im.torch(encoded_img), image_file[:-4] + "_translatey.jpg", -50.0, 50.0, 5, 
-        #     lambda x, val: transforms.translate(x, rand_val=False, shift_vals=(val, 0)), code, model)
-
-def compare_image(original_file, transformed_file):
-    original_img = im.load(original_file)
-    transformed_img = im.load(transformed_file)
-    original_code = decode(original_img)
-    print("original code: " + binary.str(original_code))
-    preds = decode_raw(im.torch(transformed_img))
-    mse_loss = binary.mse_dist(preds, code)
-    res.append((val, mse_loss))
-    print("mse: ", np.round(mse_loss, 4))
-    print("# of diff: ", binary.distance(code, preds))
+    # lambda x, val: transforms.noise(x, max_noise_val=val)
 
 if __name__ == "__main__":
     test_transforms()
