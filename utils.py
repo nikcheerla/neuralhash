@@ -46,6 +46,11 @@ def zca(x):
 	whitex = torch.mm(x, pcs)
 	return whitex
 
+def color_normalize(x):
+	return torch.cat([((x[0]-0.485)/(0.229)).unsqueeze(0),
+            ((x[1]-0.456)/(0.224)).unsqueeze(0),
+            ((x[2]-0.406)/(0.225)).unsqueeze(0)], dim=0)
+
 def tve_loss(x):
 	return ((x[:,:-1,:] - x[:,1:,:])**2).sum() + ((x[:,:,:-1] - x[:,:,1:])**2).sum()
 
@@ -54,9 +59,9 @@ def batched(datagen, batch_size=32):
 	for data in datagen:
 		arr.append(data)
 		if len(arr) == batch_size:
-			yield arr
+			yield list(zip(*arr))
 			arr = []
-	yield arr
+	yield list(zip(*arr))
 
 def elapsed(times=[time.time()]):
 	times.append(time.time())
@@ -90,12 +95,16 @@ class im(object):
 
 	@staticmethod
 	def torch(image):
-		x = Variable(torch.FloatTensor(image).permute(2, 0, 1))
+		x = torch.tensor(image).float().permute(2, 0, 1)
 		return x.to(DEVICE)
 
 	@staticmethod
 	def numpy(image):
 		return image.data.permute(1, 2, 0).cpu().numpy()
+
+	@staticmethod
+	def stack(images):
+		return torch.cat([im.torch(image).unsqueeze(0) for image in images], dim=0)
 
 
 """Binary array data manipulation methods"""
@@ -117,7 +126,7 @@ class binary(object):
 
 	@staticmethod
 	def target(values):
-		values = Variable(torch.FloatTensor(np.array([float(x) for x in values])))
+		values = torch.tensor(values).float()
 		return values.to(DEVICE)
 
 	@staticmethod
