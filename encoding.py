@@ -23,16 +23,19 @@ import transforms
 
 EPSILON = 8e-3
 MIN_LOSS = 2e-3
-BATCH_SIZE = 400
+BATCH_SIZE = 80
 
-def encode_binary(image, model, target, max_iter=200, verbose=False):
+def encode_binary(image, model, target, max_iter=200, verbose=False, perturbation=None):
 
-	im.save(image, file=f"{OUTPUT_DIR}original.jpg")
+	# im.save(image, file=f"{OUTPUT_DIR}original.jpg")
 
 	if not isinstance(image, torch.Tensor):
 		image = im.torch(image)
 
-	perturbation = nn.Parameter(0.03*torch.randn(image.size()).to(DEVICE)+0.0)
+	returnPerturbation = True
+	if not isinstance(perturbation, torch.Tensor):
+		perturbation = nn.Parameter(0.03*torch.randn(image.size()).to(DEVICE)+0.0)
+		returnPerturbation = False
 
 	# returns an image after a series of transformations
 	def p(x):
@@ -99,6 +102,10 @@ def encode_binary(image, model, target, max_iter=200, verbose=False):
 			break
 
 	if verbose: print ("Loss: ", np.mean(losses[-1]))
+	
+	if returnPerturbation:
+		return im.numpy(changed_image), perturbation
+
 	return im.numpy(changed_image)
 
 if __name__ == "__main__":

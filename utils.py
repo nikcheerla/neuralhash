@@ -62,6 +62,10 @@ def elapsed(times=[time.time()]):
 	times.append(time.time())
 	return times[-1] - times[-2]
 
+def moving_average(a, n=3) :
+    ret = np.cumsum(a, dtype=float)
+    ret[n:] = ret[n:] - ret[:-n]
+    return ret[n - 1:] / n
 
 """Image manipulation methods"""
 class im(object):

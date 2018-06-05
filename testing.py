@@ -56,14 +56,14 @@ def sweep(image, output_file, min_val, max_val, step, transform, code, model):
     plt.savefig(OUTPUT_DIR + output_file); 
     plt.cla()
 
-def test_transforms(model=None):
-
-    images = ["house.png"]
+def test_transforms(model=None, images=None):
+    print(images)
+    if images == None: images = ["house.png"]
     if model == None: model = DecodingNet()
     model.eval()
 
     for image_file in images:
-        image = im.load("images/" + image_file)
+        image = im.load("data/colornet/" + image_file)
         if image is None: continue
 
         code = binary.random(n=TARGET_SIZE)
