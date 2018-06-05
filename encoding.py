@@ -27,7 +27,7 @@ MIN_LOSS = 2e-3
 BATCH_SIZE = 96
 
 
-def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=False):
+def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=False, perturbation=None):
 
 	logger = Logger("encoding", ("loss", "bits"), verbose=verbose, plot_every=20)
 
@@ -39,7 +39,11 @@ def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=Fa
 		return F.binary_cross_entropy(scores, score_targets), \
 			predictions.cpu().data.numpy().round(2)
 	
-	perturbation = nn.Parameter(0.03*torch.randn(images.size()).to(DEVICE)+0.0)
+	returnPerturbation = True
+	if not isinstance(perturbation, torch.Tensor):
+		perturbation = nn.Parameter(0.03*torch.randn(image.size()).to(DEVICE)+0.0)
+		returnPerturbation = False
+
 	opt = torch.optim.Adam([perturbation], lr=5e-1)
 	changed_images = images.detach()
 
@@ -64,6 +68,9 @@ def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=Fa
 		error = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
 		logger.step('loss', loss)
 		logger.step('bits', error)
+
+	if returnPerturbation:
+		return changed_images.detach(), perturbation.detach()
 
 	return changed_images.detach()
 
