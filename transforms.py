@@ -113,13 +113,13 @@ if __name__ == "__main__":
 
     # returns an image after a series of transformations
     def p(x):
+        
         if random.randint(0, 2) == 0: x = resize_rect(x)
         functions = [rotate, scale, translate]
         for f in random.sample(functions, 2):
             x = f(x)
-        #if random.randint(0, 3) == 1: x = flip(x)
-        x = gauss(x)
-        x = noise(x)
+        if random.randint(0, 2) == 0: x = gauss(x)
+        if random.randint(0, 2) == 0: x = noise(x)
         x = identity(x)
         return x
 
