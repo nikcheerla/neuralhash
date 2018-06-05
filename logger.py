@@ -44,7 +44,7 @@ class Logger(object):
 		if min_timestep % self.plot_every == 0 and feature == self.features[-1] and self.verbose:
 
 			for feature in self.features:
-				plt.plot(moving_average(np.array(self.data[feature]), n=min(20, self.data[feature]))); 
+				plt.plot(np.array(self.data[feature])); 
 				plt.savefig(f"{OUTPUT_DIR}/{self.name}_{feature}.jpg");
 				plt.cla()
 
