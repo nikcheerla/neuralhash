@@ -45,9 +45,9 @@ class DecodingNet(nn.Module):
 
         self.features = models.squeezenet1_1(pretrained=True).features
         self.classifier = nn.Sequential(
-            nn.Linear(512*8, TARGET_SIZE*2),)
-            #nn.ReLU(inplace=True),
-            #nn.Linear(4096, TARGET_SIZE*2))
+            nn.Linear(512*8, 4096),
+            nn.ReLU(inplace=True),
+            nn.Linear(4096, TARGET_SIZE*2))
         self.bn = nn.BatchNorm2d(512)
         self.distribution, self.n = distribution, n
         self.to(DEVICE)
@@ -65,12 +65,12 @@ class DecodingNet(nn.Module):
         x = x.view(B*N, C, H, W)
 
         x = self.features(x)
-        #x = self.bn(x)
+        x = self.bn(x)
 
         x = torch.cat([F.avg_pool2d(x, (x.shape[2]//2)), \
                         F.max_pool2d(x, (x.shape[2]//2))], dim=1)
         x = x.view(x.size(0), -1)
-        x = (x - x.mean(dim=1, keepdim=True))/(x.std(dim=1, keepdim=True))
+        #x = (x - x.mean(dim=1, keepdim=True))/(x.std(dim=1, keepdim=True))
         x = self.classifier(x)
         x = x.view(B, N, TARGET_SIZE, 2)#.mean(dim=0) # reshape and average
 

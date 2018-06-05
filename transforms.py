@@ -87,7 +87,7 @@ def gauss(x, min_sigma=0.3, max_sigma=2, rand_val=True, sigma=1):
 def noise(x, intensity=0.08):
     noise = torch.randn(x.size()).to(DEVICE)*intensity
     grid = F.affine_grid(affine(x), size=x.size())
-    img = F.grid_sample((x+noise).clamp(min=1e-3, max=1), grid.to(x.device))[0]
+    img = F.grid_sample((x+noise).clamp(min=1e-3, max=1), grid.to(x.device))
     return img
 
 def flip(x):
