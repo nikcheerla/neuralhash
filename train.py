@@ -25,7 +25,7 @@ from testing import test_transforms
 
 
 
-logger = Logger("train", ("loss", "bits"), print_every=4, plot_every=40)
+logger = Logger("train", ("loss", "bits"), print_every=20, plot_every=100)
 
 def loss_func(model, x, targets):
 	scores = model.forward(x)
@@ -48,7 +48,7 @@ if __name__ == "__main__":
 	    x = transforms.identity(x)
 	    return x
 
-	model = nn.DataParallel(DecodingNet(n=48, distribution=p))
+	model = nn.DataParallel(DecodingNet(n=64, distribution=p))
 	optimizer = torch.optim.Adadelta(model.module.classifier.parameters(), lr=1.5e-2)
 	model.train()
 		
@@ -67,10 +67,10 @@ if __name__ == "__main__":
 
 	logger.add_hook(checkpoint)
 
-	for i, (images, targets) in enumerate(batched(data_generator(), batch_size=48)):
+	for i, (images, targets) in enumerate(batched(data_generator(), batch_size=1)):
 		images = im.stack(images)
 
-		encoded_images = encode_binary(images, targets, model, verbose=False, max_iter=3)
+		encoded_images = encode_binary(images, targets, model, verbose=False, max_iter=1)
 		loss, predictions = loss_func(model, encoded_images, targets)
 		logger.step ("loss", loss)
 

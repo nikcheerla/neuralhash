@@ -55,7 +55,7 @@ def sweep(images, targets, model, transform, min_val, max_val, samples=10, outpu
     plt.savefig(OUTPUT_DIR + output_file); 
     plt.cla()
 
-def test_transforms(image_files=["images/house.png"], model=None):
+def test_transforms(model=None, image_files=["images/house.png"]):
 
     images = [im.load(image) for image in image_files]
     images = im.stack(images)
@@ -75,9 +75,6 @@ def test_transforms(image_files=["images/house.png"], model=None):
             transform=lambda x, val: transforms.scale(x, rand_val=False, scale_val=val),
             min_val=0.6, max_val=1.4, samples=60,
             output_file="test_scale.jpg") 
-
-    # lambda x, val: transforms.noise(x, max_noise_val=val)
->>>>>>> b1791b69e29dd041a75241b5bfbe4fe21b8a00c5
 
 if __name__ == "__main__":
     test_transforms()
