@@ -17,7 +17,6 @@ from encoding import encode_binary
 from models import DecodingNet
 from logger import Logger
 
-from skimage.morphology import binary_dilation
 import IPython
 
 from testing import test_transforms
@@ -74,7 +73,7 @@ if __name__ == "__main__":
 
 	logger.add_hook(checkpoint)
 
-	for i, (perturbations, orig_images, targets, ks) in enumerate(batched(data_generator(), batch_size=48)):
+	for i, (perturbations, orig_images, targets, ks) in enumerate(batched(data_generator())):
 
 		perturbations = torch.stack(perturbations)
 		orig_images = torch.stack(orig_images)
