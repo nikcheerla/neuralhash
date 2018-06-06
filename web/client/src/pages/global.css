@@ -1,0 +1,21 @@
+html {
+  margin: 0px;
+  height: 100%;
+  background-image: -webkit-linear-gradient(#edecec, #cecbc9);
+  background-image: linear-gradient(#edecec, #cecbc9);
+}
+
+.wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.switch-wrapper {
+  position: relative;
+}
+
+.switch-wrapper > div {
+  position: relative;
+}
