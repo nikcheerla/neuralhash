@@ -71,7 +71,7 @@ def test_transforms(model=None, image_files=VAL_FILES, name="iter"):
     targets = [binary.random(n=TARGET_SIZE) for _ in range(0, len(images))]
     model.eval()
 
-    encoded_images = encode_binary(images, targets, model, verbose=True, max_iter=5)
+    encoded_images = encode_binary(images, targets, model, verbose=True)
 
     predictions = model(encoded_images).mean(dim=1).cpu().data.numpy()
     binary_loss = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
@@ -96,6 +96,7 @@ def test_transforms(model=None, image_files=VAL_FILES, name="iter"):
             transform=lambda x, val: transforms.noise(x, intensity=val),
             name=name, transform_name="noise",
             min_val=0.0, max_val=0.2, samples=5)
+    model.train()
 
 if __name__ == "__main__":
     model = nn.DataParallel(DecodingNet(distribution=p, n=64))
