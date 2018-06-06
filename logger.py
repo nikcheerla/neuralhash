@@ -44,12 +44,16 @@ class Logger(object):
 		if min_timestep % self.plot_every == 0 and feature == self.features[-1] and self.verbose:
 
 			for feature in self.features:
-				plt.plot(np.array(self.data[feature])); 
-				plt.savefig(f"{OUTPUT_DIR}/{self.name}_{feature}.jpg");
-				plt.cla()
+				self.plot(np.array(self.data[feature]), \
+					f"{OUTPUT_DIR}/{self.name}_{feature}.jpg");
 
 			for hook in self.hooks:
 				hook()
 
-		
+	def plot(self, data, plot_file):
+
+		np.savez_compressed(plot_file[:-4] + ".npz", data)
+		plt.plot(data)
+		plt.savefig(plot_file); plt.cla()
+
 

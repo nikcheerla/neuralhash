@@ -27,7 +27,7 @@ MIN_LOSS = 2e-3
 
 def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=False, perturbation=None):
 
-	logger = Logger("encoding", ("loss", "bits"), print_every=1, verbose=verbose, plot_every=20)
+	logger = Logger("encoding", ("loss", "bits"), verbose=verbose, print_every=1, plot_every=40)
 
 	def loss_func(model, x):
 		scores = model.forward(x)
@@ -46,9 +46,9 @@ def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=Fa
 	changed_images = images.detach()
 
 	def checkpoint():
+		im.save(im.numpy(images[0]), file=f"{OUTPUT_DIR}encoding_original.jpg")
 		im.save(im.numpy(changed_images[0]), file=f"{OUTPUT_DIR}encoding_changed.jpg")
 	
-	im.save(im.numpy(images[0]), file=f"{OUTPUT_DIR}encoding_original.jpg")
 	logger.add_hook(checkpoint)
 
 	for i in range(0, max_iter+1):
@@ -82,7 +82,7 @@ if __name__ == "__main__":
 		x = transforms.identity(x)
 		return x
 
-	model = nn.DataParallel(DecodingNet(n=48, distribution=p))
+	model = nn.DataParallel(DecodingNet(n=16, distribution=p))
 	model.eval()
 
 	images = [im.load(image) for image in glob.glob("data/colornet/*.jpg")[0:8]]

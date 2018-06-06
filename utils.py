@@ -1,7 +1,7 @@
 #utils.py
 
 import numpy as np
-import random, sys, os, time
+import random, sys, os, time, glob
 
 from skimage import io, color
 
@@ -18,6 +18,9 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 IMAGE_MAX = 255.0
 TARGET_SIZE = 16
 OUTPUT_DIR = "output/"
+DATA_FILES = sorted(glob.glob("data/colornet/*.jpg"))
+TRAIN_FILES, VAL_FILES = DATA_FILES[:5000], DATA_FILES[5000:5008]
+
 
 def corrcoef(x):
 	mean_x = torch.mean(x, 1).unsqueeze(1)
