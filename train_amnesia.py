@@ -25,7 +25,7 @@ from testing import test_transforms
 
 
 DATA_PATH = 'data/amnesia'
-logger = Logger("train", ("loss", "bits"), print_every=4, plot_every=20)
+logger = Logger("train", ("loss", "bits"), print_every=5, plot_every=20)
 
 def loss_func(model, x, targets):
 	scores = model.forward(x)
