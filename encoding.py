@@ -24,12 +24,10 @@ import transforms
 
 EPSILON = 9e-3
 MIN_LOSS = 2e-3
-BATCH_SIZE = 96
-
 
 def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=False, perturbation=None):
 
-	logger = Logger("encoding", ("loss", "bits"), verbose=verbose, plot_every=20)
+	logger = Logger("encoding", ("loss", "bits"), print_every=1, verbose=verbose, plot_every=20)
 
 	def loss_func(model, x):
 		scores = model.forward(x)
@@ -87,7 +85,7 @@ if __name__ == "__main__":
 	model = nn.DataParallel(DecodingNet(n=48, distribution=p))
 	model.eval()
 
-	images = [im.load(image) for image in glob.glob("data/colornet/*.jpg")[0:1]]
+	images = [im.load(image) for image in glob.glob("data/colornet/*.jpg")[0:8]]
 	images = im.stack(images)
 	targets = [binary.random(n=TARGET_SIZE) for _ in range(0, len(images))]
 

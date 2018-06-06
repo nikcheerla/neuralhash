@@ -72,7 +72,7 @@ if __name__ == "__main__":
 	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=1e-3)
 	model.train()
 	
-	init_data('data/colornet', DATA_PATH, n=5000)
+	init_data('data/colornet', DATA_PATH, n=48)
 
 	def data_generator():
 		path = f"{DATA_PATH}/*.pth"
@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
 	def checkpoint():
 		print (f"Saving model to {OUTPUT_DIR}train_test.pth")
-		# model.save(OUTPUT_DIR + "train_test.pth")
+		model.save(OUTPUT_DIR + "train_test.pth")
 
 	logger.add_hook(checkpoint)
 
@@ -109,12 +109,11 @@ if __name__ == "__main__":
 		for new_p, orig_image, target, k in zip(new_perturbations, orig_images, targets, ks):
 			torch.save((torch.tensor(new_p.data), torch.tensor(orig_image.data), target, k), f'{DATA_PATH}/{target}_{k}.pth')
 
-		if (i+1) % 40 == 0:
+		if (i+1) % 1 == 0:
 			file = random.choice(glob.glob('data/colornet/*')[:500])
 			test_transforms(model, image_files=[file], name=file.split('/')[-1])
 	
 		if i == 600:
 			break
 
-	save_data(DATA_PATH, OUTPUT_DIR)
-	# test_transforms(model, images=os.listdir(OUTPUT_DIR+"special/")[0:1])
+	# save_data(DATA_PATH, OUTPUT_DIR)
