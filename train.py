@@ -24,9 +24,6 @@ import IPython
 from testing import test_transforms
 
 
-
-logger = Logger("train", ("loss", "bits"), print_every=4, plot_every=40)
-
 def loss_func(model, x, targets):
 	scores = model.forward(x)
 	predictions = scores.mean(dim=1)
@@ -35,10 +32,10 @@ def loss_func(model, x, targets):
 	return F.binary_cross_entropy(scores, score_targets), \
 		predictions.cpu().data.numpy().round(2)
 
-def create_targets():
-	return [(i == j) for i, j in product(range(TARGET_SIZE), range(TARGET_SIZE))]
 
 if __name__ == "__main__":
+
+	logger = Logger("train", ("loss", "bits"), print_every=4, plot_every=40)
 
 	def p(x):
 	    x = transforms.resize_rect(x)

@@ -47,17 +47,6 @@ def init_data(input_path, output_path, n=100):
 		target = binary.random(n=TARGET_SIZE)
 		torch.save((perturbation, img, target, k), f'{output_path}/{target}_{k}.pth')
 
-def save_data(input_path, output_path):
-	files = glob.glob(f'{input_path}/*.pth')
-	for file in files:
-		perturbation, image, target, k = torch.load(random.choice(files))
-
-		perturbation_zc = perturbation/perturbation.norm(2)*EPSILON*(perturbation.nelement()**0.5)
-		changed_image = (image + perturbation_zc).clamp(min=0, max=1)
-
-		im.save(im.numpy(image), file=f"{output_path}orig_{target}.jpg")
-		im.save(im.numpy(changed_image), file=f"{output_path}changed_{target}.jpg")
-
 if __name__ == "__main__":	
 
 	def p(x):
@@ -82,7 +71,7 @@ if __name__ == "__main__":
 
 	def checkpoint():
 		print (f"Saving model to {OUTPUT_DIR}train_test.pth")
-		# model.save(OUTPUT_DIR + "train_test.pth")
+		model.save(OUTPUT_DIR + "train_test.pth")
 
 	logger.add_hook(checkpoint)
 
@@ -110,11 +99,8 @@ if __name__ == "__main__":
 			torch.save((torch.tensor(new_p.data), torch.tensor(orig_image.data), target, k), f'{DATA_PATH}/{target}_{k}.pth')
 
 		if (i+1) % 40 == 0:
-			file = random.choice(glob.glob('data/colornet/*')[:500])
-			test_transforms(model, image_files=[file], name=file.split('/')[-1])
+			test_transforms(model, name=f"iter{i}")
 	
-		if i == 600:
-			break
+		if i == 600: break
 
-	save_data(DATA_PATH, OUTPUT_DIR)
-	# test_transforms(model, images=os.listdir(OUTPUT_DIR+"special/")[0:1])
+	test_transforms(model, name=f"iter_final")
