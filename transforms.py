@@ -84,7 +84,7 @@ def gauss(x, min_sigma=0.3, max_sigma=2, rand_val=True, sigma=1):
     img = F.conv2d(x, weight=gaussian, padding=2)
     return img
 
-def noise(x, intensity=0.08):
+def noise(x, intensity=0.05):
     noise = torch.randn(x.size()).to(DEVICE)*intensity
     grid = F.affine_grid(affine(x), size=x.size())
     img = F.grid_sample((x+noise).clamp(min=1e-3, max=1), grid.to(x.device))
@@ -113,13 +113,7 @@ if __name__ == "__main__":
 
     # returns an image after a series of transformations
     def p(x):
-        
-        if random.randint(0, 2) == 0: x = resize_rect(x)
-        functions = [rotate, scale, translate]
-        for f in random.sample(functions, 2):
-            x = f(x)
-        if random.randint(0, 2) == 0: x = gauss(x)
-        if random.randint(0, 2) == 0: x = noise(x)
+        x = noise(x, intensity=0.05)
         x = identity(x)
         return x
 

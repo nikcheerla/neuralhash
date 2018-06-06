@@ -1,5 +1,6 @@
 
-import random, sys, os, glob, tqdm
+import random, sys, os, glob
+import argparse, tqdm
 
 import matplotlib as mpl
 mpl.use('Agg')
@@ -24,7 +25,6 @@ logger = Logger("bits", ("orig", "rotate", "scale", "translate", "noise"),
 
 # returns an image after a series of transformations
 def p(x):
-    return transforms.identity(x)
     x = transforms.resize_rect(x)
     x = transforms.rotate(transforms.scale(x, 0.6, 1.4), max_angle=30)
     x = transforms.gauss(x, min_sigma=0.8, max_sigma=1.2)
@@ -71,7 +71,11 @@ def test_transforms(model=None, image_files=VAL_FILES, name="iter"):
     targets = [binary.random(n=TARGET_SIZE) for _ in range(0, len(images))]
     model.eval()
 
-    encoded_images = encode_binary(images, targets, model, verbose=True)
+    encoded_images = encode_binary(images, targets, model, verbose=True, max_iter=300)
+
+    for img, encoded_im, filename in zip(images, encoded_images, image_files):
+        im.save(im.numpy(img), file=f"{OUTPUT_DIR}_original_{filename.split('/')[-1]}")
+        im.save(im.numpy(encoded_im), file=f"{OUTPUT_DIR}_encoded_{filename.split('/')[-1]}")
 
     predictions = model(encoded_images).mean(dim=1).cpu().data.numpy()
     binary_loss = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
@@ -99,8 +103,16 @@ def test_transforms(model=None, image_files=VAL_FILES, name="iter"):
     model.train()
 
 if __name__ == "__main__":
-    model = nn.DataParallel(DecodingNet(distribution=p, n=64))
-    test_transforms(model, image_files=VAL_FILES[0:1], name="test")
+
+    parser = argparse.ArgumentParser(description='Encodes a set of images and benchmarks robustness.')
+    parser.add_argument('--path', default=None, help="Path of model to load")
+    args = parser.parse_args()
+
+    model = nn.DataParallel(DecodingNet(distribution=p, n=80))
+    if args.path is not None: model.module.load(args.path)
+    model.eval()
+
+    test_transforms(model, image_files=VAL_FILES[0:8], name="test")
 
 
 

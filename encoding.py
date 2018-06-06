@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-import random, sys, os, json, glob
+import random, sys, os, json, glob, argparse
 
 import torch
 import torch.nn as nn
@@ -47,12 +47,6 @@ def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=Fa
 	opt = torch.optim.Adam([perturbation], lr=5e-1)
 	changed_images = images.detach()
 
-	def checkpoint():
-		im.save(im.numpy(changed_images[0]), file=f"{OUTPUT_DIR}encoding_changed.jpg")
-	
-	im.save(im.numpy(images[0]), file=f"{OUTPUT_DIR}encoding_original.jpg")
-	logger.add_hook(checkpoint)
-
 	for i in range(0, max_iter+1):
 
 		perturbation_zc = perturbation/perturbation.view(perturbation.shape[0], -1)\
@@ -76,6 +70,10 @@ def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=Fa
 
 if __name__ == "__main__":
 	
+	parser = argparse.ArgumentParser(description='Encodes a given image and prints corrupt bits.')
+	parser.add_argument('--path', default=None, help="Path of model to load")
+	args = parser.parse_args()
+
 	def p(x):
 		x = transforms.resize_rect(x)
 		x = transforms.rotate(transforms.scale(x, 0.6, 1.4), max_angle=30)
@@ -84,13 +82,14 @@ if __name__ == "__main__":
 		x = transforms.identity(x)
 		return x
 
-	model = nn.DataParallel(DecodingNet(n=48, distribution=p))
+	model = nn.DataParallel(DecodingNet(n=80, distribution=p))
+	if args.path is not None: model.module.load(args.path)
 	model.eval()
 
-	images = [im.load(image) for image in glob.glob("data/colornet/*.jpg")[0:1]]
+	images = [im.load(image) for image in ["images/house.png"]]
 	images = im.stack(images)
 	targets = [binary.random(n=TARGET_SIZE) for _ in range(0, len(images))]
 
-	encode_binary(images, targets, model, verbose=True)
+	encode_binary(images, targets, model, verbose=True, max_iter=500)
 
 

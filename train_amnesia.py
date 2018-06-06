@@ -116,4 +116,3 @@ if __name__ == "__main__":
 			break
 
 	save_data(DATA_PATH, OUTPUT_DIR)
-	# test_transforms(model, images=os.listdir(OUTPUT_DIR+"special/")[0:1])
