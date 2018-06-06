@@ -1,6 +1,6 @@
 
 import numpy as np
-import random, sys, os, json, glob
+import random, sys, os, json, glob, tqdm
 
 import matplotlib as mpl
 mpl.use('Agg')
@@ -38,7 +38,7 @@ def loss_func(model, x, targets):
 def init_data(input_path, output_path, n=100):
 	os.system(f'rm {output_path}/*.pth')
 	files = glob.glob(f'{input_path}/*.jpg')
-	for k in range(n):
+	for k in tqdm.trange(n, ncols=50):
 		img = im.load(random.choice(files))
 		if img is None: continue
 		img = im.torch(img).detach()
@@ -57,7 +57,7 @@ if __name__ == "__main__":
 		return x
 
 	model = nn.DataParallel(DecodingNet(n=48, distribution=p))
-	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=2e-3)
+	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=2.5e-3)
 	model.train()
 	
 	init_data('data/colornet', DATA_PATH, n=5000)
@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
 	logger.add_hook(checkpoint)
 
-	for i, (perturbations, orig_images, targets, ks) in enumerate(batched(data_generator(), batch_size=48)):
+	for i, (perturbations, orig_images, targets, ks) in enumerate(batched(data_generator(), batch_size=64)):
 
 		perturbations = torch.stack(perturbations)
 		orig_images = torch.stack(orig_images)

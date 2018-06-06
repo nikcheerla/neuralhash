@@ -6,6 +6,7 @@ parser = argparse.ArgumentParser(description='Runs arbitary jobs with experiment
 
 parser.add_argument("cmd")
 parser.add_argument('--type', default="experiment", help='type of run')
+parser.add_argument('--config', default="configuration", help='type of run')
 args = parser.parse_args()
 
 try:
@@ -17,8 +18,7 @@ run_data = run_log[args.type] = run_log.get(args.type, {})
 run_data["runs"] = run_data.get("runs", 0) + 1
 run_name = args.type + str(run_data["runs"])
 
-config = input ("Add a comment describing initial configuration? [ENTER to skip]: ")
-run_data[run_name] = {"config": config, "cmd": args.cmd, "status": "In Progress"}
+run_data[run_name] = {"config": args.config, "cmd": args.cmd, "status": "In Progress"}
 
 
 process = subprocess.Popen(args.cmd, shell=True)
@@ -35,7 +35,7 @@ def monitor_process(process, run_data):
 			return
 
 	if process.poll() == 0:
-		result = input ("Add a comment describing results? [ENTER to skip]: ")
+		result = "result omitted for clarity" #input ("Add a comment describing results? [ENTER to skip]: ")
 		run_data[run_name] = {"config": config, "cmd": args.cmd, \
 							"status": "Complete", "results": result}
 	else:
