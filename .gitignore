@@ -1,4 +1,3 @@
-*.json
 .floyd*
 __*
 __pycache__/*
@@ -8,6 +7,7 @@ data
 sftp-config.json
 output
 jobs
+<<<<<<< HEAD
 jobs/*
 output/*
 *.pth
