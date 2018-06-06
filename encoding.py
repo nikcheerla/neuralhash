@@ -82,11 +82,11 @@ if __name__ == "__main__":
 		x = transforms.identity(x)
 		return x
 
-	model = nn.DataParallel(DecodingNet(n=80, distribution=p))
+	model = nn.DataParallel(DecodingNet(n=48, distribution=p))
 	if args.path is not None: model.module.load(args.path)
 	model.eval()
 
-	images = [im.load(image) for image in ["images/house.png"]]
+	images = [im.load(image) for image in (["images/house.png"]*64)]
 	images = im.stack(images)
 	targets = [binary.random(n=TARGET_SIZE) for _ in range(0, len(images))]
 

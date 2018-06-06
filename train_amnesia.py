@@ -57,7 +57,7 @@ if __name__ == "__main__":
 		return x
 
 	model = nn.DataParallel(DecodingNet(n=48, distribution=p))
-	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=1e-3)
+	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=2e-3)
 	model.train()
 	
 	init_data('data/colornet', DATA_PATH, n=5000)
@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
 	logger.add_hook(checkpoint)
 
-	for i, (perturbations, orig_images, targets, ks) in enumerate(batched(data_generator())):
+	for i, (perturbations, orig_images, targets, ks) in enumerate(batched(data_generator(), batch_size=48)):
 
 		perturbations = torch.stack(perturbations)
 		orig_images = torch.stack(orig_images)
