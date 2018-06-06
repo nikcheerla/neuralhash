@@ -60,7 +60,7 @@ if __name__ == "__main__":
 	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=1e-3)
 	model.train()
 	
-	init_data(DATA_PATH, n=48)
+	init_data(DATA_PATH, n=5000)
 
 	def data_generator():
 		path = f"{DATA_PATH}/*.pth"
@@ -70,11 +70,11 @@ if __name__ == "__main__":
 
 	def checkpoint():
 		print (f"Saving model to {OUTPUT_DIR}train_test.pth")
-		model.save(OUTPUT_DIR + "train_test.pth")
+		model.module.save(OUTPUT_DIR + "train_test.pth")
 
 	logger.add_hook(checkpoint)
 
-	for i, (perturbations, orig_images, targets, ks) in enumerate(batched(data_generator())):
+	for i, (perturbations, orig_images, targets, ks) in enumerate(batched(data_generator(), batch_size=48)):
 
 		perturbations = torch.stack(perturbations)
 		orig_images = torch.stack(orig_images)
