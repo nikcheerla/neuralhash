@@ -1,5 +1,3 @@
-from __future__ import print_function
-import IPython
 
 import random, sys, os, glob, tqdm
 
@@ -7,6 +5,11 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
 
 from utils import *
 import transforms
@@ -62,38 +65,35 @@ def sweep(images, targets, model, transform, \
 def test_transforms(model=None, image_files=VAL_FILES, name="iter"):
 
     images = [im.load(image) for image in image_files]
+    images = im.stack(images)
+    targets = [binary.random(n=TARGET_SIZE) for _ in range(0, len(images))]
+    model.eval()
 
-    with torch.no_grad():
-        images = im.stack(images)
-        targets = [binary.random(n=TARGET_SIZE) for _ in range(0, len(images))]
-        model.eval()
-        print (images.shape)
+    encoded_images = encode_binary(images, targets, model, verbose=True)
 
-        encoded_images = encode_binary(images, targets, model, verbose=True)
+    predictions = model(encoded_images).mean(dim=1).cpu().data.numpy()
+    binary_loss = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
+    logger.step("bits", np.mean(binary_loss))
 
-        predictions = model(encoded_images).mean(dim=1).cpu().data.numpy()
-        binary_loss = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
-        logger.step("bits", np.mean(binary_loss))
-    
-        sweep(encoded_images, targets, model,
-                transform=lambda x, val: transforms.rotate(x, rand_val=False, theta=val),
-                name=name, transform_name="rotate",
-                min_val=-0.6, max_val=0.6, samples=60)
+    sweep(encoded_images, targets, model,
+            transform=lambda x, val: transforms.rotate(x, rand_val=False, theta=val),
+            name=name, transform_name="rotate",
+            min_val=-0.6, max_val=0.6, samples=60)
 
-        sweep(encoded_images, targets, model,
-                transform=lambda x, val: transforms.scale(x, rand_val=False, scale_val=val),
-                name=name, transform_name="scale",
-                min_val=0.6, max_val=1.4, samples=60) 
+    sweep(encoded_images, targets, model,
+            transform=lambda x, val: transforms.scale(x, rand_val=False, scale_val=val),
+            name=name, transform_name="scale",
+            min_val=0.6, max_val=1.4, samples=60) 
 
-        sweep(encoded_images, targets, model,
-                transform=lambda x, val: transforms.translate(x, max_val=val),
-                name=name, transform_name="translate",
-                min_val=0.0, max_val=0.4, samples=10)
+    sweep(encoded_images, targets, model,
+            transform=lambda x, val: transforms.translate(x, max_val=val),
+            name=name, transform_name="translate",
+            min_val=0.0, max_val=0.4, samples=10)
 
-        sweep(encoded_images, targets, model,
-                transform=lambda x, val: transforms.noise(x, intensity=val),
-                name=name, transform_name="noise",
-                min_val=0.0, max_val=0.2, samples=5)
+    sweep(encoded_images, targets, model,
+            transform=lambda x, val: transforms.noise(x, intensity=val),
+            name=name, transform_name="noise",
+            min_val=0.0, max_val=0.2, samples=5)
 
 if __name__ == "__main__":
     model = nn.DataParallel(DecodingNet(distribution=p, n=64))
