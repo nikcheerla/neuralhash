@@ -45,7 +45,7 @@ class Logger(object):
 
 			for feature in self.features:
 				self.plot(np.array(self.data[feature]), \
-					f"{OUTPUT_DIR}/{self.name}_{feature}.jpg");
+					f"{OUTPUT_DIR}{self.name}_{feature}.jpg");
 
 			for hook in self.hooks:
 				hook()
@@ -53,7 +53,9 @@ class Logger(object):
 	def plot(self, data, plot_file):
 
 		np.savez_compressed(plot_file[:-4] + ".npz", data)
+		print ("Plotting ", data, "to ", plot_file)
 		plt.plot(data)
-		plt.savefig(plot_file); plt.cla()
+		plt.savefig(plot_file); 
+		plt.clf()
 
 

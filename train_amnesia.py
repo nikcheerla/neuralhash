@@ -24,8 +24,6 @@ from testing import test_transforms
 
 
 DATA_PATH = 'data/amnesia'
-logger = Logger("train", ("loss", "bits"), print_every=4, plot_every=20)
-EPSILON = 9e-3
 
 def loss_func(model, x, targets):
 	scores = model.forward(x)
@@ -35,11 +33,11 @@ def loss_func(model, x, targets):
 	return F.binary_cross_entropy(scores, score_targets), \
 		predictions.cpu().data.numpy().round(2)
 
-def init_data(input_path, output_path, n=100):
+def init_data(output_path, n=100):
+	
 	os.system(f'rm {output_path}/*.pth')
-	files = glob.glob(f'{input_path}/*.jpg')
 	for k in range(n):
-		img = im.load(random.choice(files))
+		img = im.load(random.choice(TRAIN_FILES))
 		if img is None: continue
 		img = im.torch(img).detach()
 		perturbation = nn.Parameter(0.03*torch.randn(img.size()).to(DEVICE)+0.0).detach()
@@ -47,6 +45,8 @@ def init_data(input_path, output_path, n=100):
 		torch.save((perturbation, img, target, k), f'{output_path}/{target}_{k}.pth')
 
 if __name__ == "__main__":	
+
+	logger = Logger("train", ("loss", "bits"), print_every=5, plot_every=20)
 
 	def p(x):
 		x = transforms.resize_rect(x)
@@ -60,7 +60,7 @@ if __name__ == "__main__":
 	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=1e-3)
 	model.train()
 	
-	init_data('data/colornet', DATA_PATH, n=48)
+	init_data(DATA_PATH, n=48)
 
 	def data_generator():
 		path = f"{DATA_PATH}/*.pth"
@@ -97,7 +97,7 @@ if __name__ == "__main__":
 		for new_p, orig_image, target, k in zip(new_perturbations, orig_images, targets, ks):
 			torch.save((torch.tensor(new_p.data), torch.tensor(orig_image.data), target, k), f'{DATA_PATH}/{target}_{k}.pth')
 
-		if (i+1) % 40 == 0:
+		if (i+1) % 100 == 0:
 			test_transforms(model, name=f"iter{i}")
 	
 		if i == 600: break
