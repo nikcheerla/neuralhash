@@ -97,10 +97,9 @@ if __name__ == "__main__":
 		for new_p, orig_image, target, k in zip(new_perturbations, orig_images, targets, ks):
 			torch.save((torch.tensor(new_p.data), torch.tensor(orig_image.data), target, k), f'{DATA_PATH}/{target}_{k}.pth')
 
-		if i % 40 == 0:
+		if i % 100 == 0:
 			test_transforms(model, name=f'iter{i}')
 	
-		if i == 600:
+		if i == 800:
 			break
 
-	

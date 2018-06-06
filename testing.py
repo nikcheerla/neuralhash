@@ -71,7 +71,7 @@ def test_transforms(model=None, image_files=VAL_FILES, name="iter"):
     targets = [binary.random(n=TARGET_SIZE) for _ in range(0, len(images))]
     model.eval()
 
-    encoded_images = encode_binary(images, targets, model, verbose=True, max_iter=300)
+    encoded_images = encode_binary(images, targets, model, verbose=True)
 
     for img, encoded_im, filename in zip(images, encoded_images, image_files):
         im.save(im.numpy(img), file=f"{OUTPUT_DIR}_original_{filename.split('/')[-1]}")
