@@ -103,4 +103,4 @@ if __name__ == "__main__":
 		if i == 600:
 			break
 
-	save_data(DATA_PATH, OUTPUT_DIR)
+	
