@@ -82,11 +82,7 @@ def gauss(x, min_sigma=0.3, max_sigma=2, rand_val=True, sigma=1):
     return x
 
 def noise(x, intensity=0.05):
-<<<<<<< HEAD
     noise = torch.randn(x.size()).to(x.device)*intensity
-=======
-    noise = torch.randn(x.size()).to(DEVICE)*intensity
->>>>>>> 7526ae9d5d7ba7ef1a82a7208bd3ee089629f126
     grid = F.affine_grid(affine(x), size=x.size())
     img = F.grid_sample((x+noise).clamp(min=1e-3, max=1), grid.to(x.device), padding_mode='border')
     return img
