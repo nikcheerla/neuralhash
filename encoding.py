@@ -1,11 +1,11 @@
 
-from __future__ import print_function
+import random, sys, os, json, glob, argparse
 
 import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-import random, sys, os, json, glob
+from fire import Fire
 
 import torch
 import torch.nn as nn
@@ -22,14 +22,14 @@ import IPython
 
 import transforms
 
-EPSILON = 9e-3
+EPSILON = 1e-2
 MIN_LOSS = 2e-3
 BATCH_SIZE = 96
 
 
 def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=False, perturbation=None):
 
-	logger = Logger("encoding", ("loss", "bits"), verbose=verbose, print_every=50, plot_every=50)
+	logger = Logger("encoding", ("loss", "bits"), verbose=verbose, print_every=20, plot_every=40)
 
 	def loss_func(model, x):
 		scores = model.forward(x)
@@ -46,12 +46,6 @@ def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=Fa
 
 	opt = torch.optim.Adam([perturbation], lr=5e-1)
 	changed_images = images.detach()
-
-	def checkpoint():
-		im.save(im.numpy(changed_images[0]), file=f"{OUTPUT_DIR}encoding_changed.jpg")
-	
-	im.save(im.numpy(images[0]), file=f"{OUTPUT_DIR}encoding_original.jpg")
-	logger.add_hook(checkpoint)
 
 	for i in range(0, max_iter+1):
 
@@ -74,23 +68,19 @@ def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=Fa
 
 	return changed_images.detach()
 
+
+def encode(model, image, target, out):
+
+	if type(model) is str:
+		x = nn.DataParallel(DecodingNet(distribution=transforms.encoding, n=96))
+		x.module.load(model)
+		model = x
+
+	image = im.torch(im.load(image)).unsqueeze(0)
+	target = binary.parse(str(target))
+	encoded = encode_binary(image, [target], model, verbose=True, max_iter=300)
+	im.save(im.numpy(encoded.squeeze()), file=out)
+
+
 if __name__ == "__main__":
-	
-	def p(x):
-		x = transforms.resize_rect(x)
-		x = transforms.rotate(transforms.scale(x, 0.6, 1.4), max_angle=30)
-		x = transforms.gauss(x, min_sigma=0.8, max_sigma=1.2)
-		x = transforms.translate(x)
-		x = transforms.identity(x)
-		return x
-
-	model = nn.DataParallel(DecodingNet(n=48, distribution=p))
-	model.eval()
-
-	images = [im.load(image) for image in glob.glob("data/colornet/*.jpg")[0:1]]
-	images = im.stack(images)
-	targets = [binary.random(n=TARGET_SIZE) for _ in range(0, len(images))]
-
-	encode_binary(images, targets, model, verbose=True)
-
-
+	Fire(encode)

@@ -25,62 +25,62 @@ import transforms
 
 
 class GramMatrix(nn.Module):
-    def forward(self, input):
-        N, C, H, W = input.size()
+	def forward(self, input):
+		N, C, H, W = input.size()
 
-        features = input.view(N, C, H*W)  # resise F_XL into \hat F_XL
+		features = input.view(N, C, H*W)  # resise F_XL into \hat F_XL
 
-        G = torch.bmm(features, features.permute(0,2,1))  # compute the gram product
+		G = torch.bmm(features, features.permute(0,2,1))  # compute the gram product
 
-        # we 'normalize' the values of the gram matrix
-        # by dividing by the number of element in each feature maps.
-        return G.div(N * C * H * W)
+		# we 'normalize' the values of the gram matrix
+		# by dividing by the number of element in each feature maps.
+		return G.div(N * C * H * W)
 
 
 """Decoding network that tries to predict on a parallel batch"""
 class DecodingNet(nn.Module):
 
-    def __init__(self, distribution=transforms.identity, n=1):
-        super(DecodingNet, self).__init__()
+	def __init__(self, distribution=transforms.identity, n=1):
+		super(DecodingNet, self).__init__()
 
-        self.features = models.squeezenet1_1(pretrained=True).features
-        self.classifier = nn.Sequential(
-            nn.Linear(512*8, TARGET_SIZE*2),)
-            #nn.ReLU(inplace=True),
-            #nn.Linear(4096, TARGET_SIZE*2))
-        self.bn = nn.BatchNorm2d(512)
-        self.distribution, self.n = distribution, n
-        self.to(DEVICE)
+		self.features = models.squeezenet1_1(pretrained=True).features
+		self.classifier = nn.Sequential(
+			nn.Linear(512*8, TARGET_SIZE*2),)
+			#nn.ReLU(inplace=True),
+			#nn.Linear(4096, TARGET_SIZE*2))
+		self.bn = nn.BatchNorm2d(512)
+		self.distribution, self.n = distribution, n
+		self.to(DEVICE)
 
-    def forward(self, x):
+	def forward(self, x):
 
-        x = torch.cat([self.distribution(x).unsqueeze(1) \
-                        for i in range(0, self.n)], dim=1)
-        B, N, C, H, W = x.shape
+		x = torch.cat([self.distribution(x).unsqueeze(1) \
+						for i in range(0, self.n)], dim=1)
+		B, N, C, H, W = x.shape
 
-        x = torch.cat([((x[:, :, 0]-0.485)/(0.229)).unsqueeze(2),
-            ((x[:, :, 1]-0.456)/(0.224)).unsqueeze(2),
-            ((x[:, :, 2]-0.406)/(0.225)).unsqueeze(2)], dim=2)
+		x = torch.cat([((x[:, :, 0]-0.485)/(0.229)).unsqueeze(2),
+			((x[:, :, 1]-0.456)/(0.224)).unsqueeze(2),
+			((x[:, :, 2]-0.406)/(0.225)).unsqueeze(2)], dim=2)
 
-        x = x.view(B*N, C, H, W)
+		x = x.view(B*N, C, H, W)
 
-        x = self.features(x)
-        #x = self.bn(x)
+		x = self.features(x)
+		#x = self.bn(x)
 
-        x = torch.cat([F.avg_pool2d(x, (x.shape[2]//2)), \
-                        F.max_pool2d(x, (x.shape[2]//2))], dim=1)
-        x = x.view(x.size(0), -1)
-        x = (x - x.mean(dim=1, keepdim=True))/(x.std(dim=1, keepdim=True))
-        x = self.classifier(x)
-        x = x.view(B, N, TARGET_SIZE, 2)#.mean(dim=0) # reshape and average
+		x = torch.cat([F.avg_pool2d(x, (x.shape[2]//2)), \
+						F.max_pool2d(x, (x.shape[2]//2))], dim=1)
+		x = x.view(x.size(0), -1)
+		x = (x - x.mean(dim=1, keepdim=True))/(x.std(dim=1, keepdim=True))
+		x = self.classifier(x)
+		x = x.view(B, N, TARGET_SIZE, 2)#.mean(dim=0) # reshape and average
 
-        return F.softmax(x, dim=3)[:,:, :, 0]
+		return F.softmax(x, dim=3)[:,:, :, 0].clamp(min=0, max=1)
 
-    def load(self, file_path):
-        self.load_state_dict(torch.load(file_path))
+	def load(self, file_path):
+		self.load_state_dict(torch.load(file_path))
 
-    def save(self, file_path):
-        torch.save(self.state_dict(), file_path)
+	def save(self, file_path):
+		torch.save(self.state_dict(), file_path)
 
 
 
@@ -151,20 +151,11 @@ class DecodingNet(nn.Module):
 
 if __name__ == "__main__":
 
-    # returns an image after a series of transformations
-    def p(x):
-        x = transforms.resize_rect(x)
-        x = transforms.rotate(transforms.scale(x, 0.6, 1.4), max_angle=30)
-        x = transforms.gauss(x, min_sigma=0.8, max_sigma=1.2)
-        x = transforms.translate(x)
-        x = transforms.identity(x)
-        return x
+	model = nn.DataParallel(DecodingNet(n=80, distribution=transforms.training))
+	images = torch.randn(48, 3, 224, 224).float().to(DEVICE).requires_grad_()
+	elapsed()
+	x = model.forward(images)
+	print (elapsed())
 
-    model = nn.DataParallel(DecodingNet(n=80, distribution=p))
-    images = torch.randn(48, 3, 224, 224).float().to(DEVICE).requires_grad_()
-    elapsed()
-    x = model.forward(images)
-    print (elapsed())
-
-    x.mean().backward()
-    print (x.shape)
+	x.mean().backward()
+	print (x.shape)

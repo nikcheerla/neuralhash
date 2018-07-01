@@ -16,7 +16,7 @@ import random
 USE_CUDA = torch.cuda.is_available()
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 IMAGE_MAX = 255.0
-TARGET_SIZE = 16
+TARGET_SIZE = 32
 OUTPUT_DIR = "output/"
 DATA_FILES = sorted(glob.glob("data/colornet/*.jpg"))
 TRAIN_FILES, VAL_FILES = DATA_FILES[:5000], DATA_FILES[5000:5008]

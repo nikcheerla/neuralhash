@@ -5,6 +5,7 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
+from fire import Fire
 
 import torch
 import torch.nn as nn
@@ -18,19 +19,11 @@ from encoding import encode_binary
 from models import DecodingNet
 from logger import Logger
 
+import IPython
+
 
 logger = Logger("bits", ("orig", "rotate", "scale", "translate", "noise"),
                 print_every=1, plot_every=5)
-
-# returns an image after a series of transformations
-def p(x):
-    return transforms.identity(x)
-    x = transforms.resize_rect(x)
-    x = transforms.rotate(transforms.scale(x, 0.6, 1.4), max_angle=30)
-    x = transforms.gauss(x, min_sigma=0.8, max_sigma=1.2)
-    x = transforms.translate(x)
-    x = transforms.resize(x, rand_val=False, resize_val=224)
-    return x
 
 def sweep(images, targets, model, transform, \
             name, transform_name, 
@@ -64,7 +57,16 @@ def sweep(images, targets, model, transform, \
     plt.savefig(f"{OUTPUT_DIR}/{name}_{transform_name}.jpg"); 
     plt.cla(); plt.clf(); plt.close()
 
-def test_transforms(model=None, image_files=VAL_FILES, name="iter"):
+
+def test_transforms(model=None, image_files=VAL_FILES, name="test"):
+
+    if model is None:
+        model = nn.DataParallel(DecodingNet(distribution=transforms.encoding, n=64))
+
+    if type(model) is str:
+        x = nn.DataParallel(DecodingNet(distribution=transforms.encoding, n=64))
+        x.module.load(model)
+        model = x
 
     images = [im.load(image) for image in image_files]
     images = im.stack(images)
@@ -72,6 +74,10 @@ def test_transforms(model=None, image_files=VAL_FILES, name="iter"):
     model.eval()
 
     encoded_images = encode_binary(images, targets, model, verbose=True)
+
+    for img, encoded_im, filename in zip(images, encoded_images, image_files):
+        im.save(im.numpy(img), file=f"{OUTPUT_DIR}_original_{filename.split('/')[-1]}")
+        im.save(im.numpy(encoded_im), file=f"{OUTPUT_DIR}_encoded_{filename.split('/')[-1]}")
 
     predictions = model(encoded_images).mean(dim=1).cpu().data.numpy()
     binary_loss = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
@@ -98,9 +104,27 @@ def test_transforms(model=None, image_files=VAL_FILES, name="iter"):
             min_val=0.0, max_val=0.2, samples=5)
     model.train()
 
+
+def evaluate(model, image, target):
+
+    if type(model) is str:
+        x = nn.DataParallel(DecodingNet(distribution=transforms.encoding, n=64))
+        x.module.load(model)
+        model = x
+
+    image = im.torch(im.load(image)).unsqueeze(0)
+    target = binary.parse(str(target))
+    prediction = model(image).mean(dim=1).squeeze().cpu().data.numpy()
+    prediction = binary.get(prediction)
+
+    print (f"Target: {binary.str(target)}, Prediction: {binary.str(prediction)}, \
+            Distance: {binary.distance(target, prediction)}")
+
+
+
+
 if __name__ == "__main__":
-    model = nn.DataParallel(DecodingNet(distribution=p, n=64))
-    test_transforms(model, image_files=VAL_FILES[0:1], name="test")
+    Fire()
 
 
 
