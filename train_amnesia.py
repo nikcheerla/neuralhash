@@ -54,7 +54,7 @@ if __name__ == "__main__":
 	params = itertools.chain(model.module.classifier.parameters(), 
 							model.module.features[-1].parameters())
 	optimizer = torch.optim.Adam(params, lr=2.5e-3)
-	model.train()
+	#model.train()
 	
 	#init_data('data/colornet', DATA_PATH, n=5000)
 
@@ -70,7 +70,8 @@ if __name__ == "__main__":
 
 	logger.add_hook(checkpoint)
 
-	for i, (perturbations, orig_images, targets, ks) in enumerate(batched(data_generator(), batch_size=64)):
+	for i, (perturbations, orig_images, targets, ks) in \
+			enumerate(batched(data_generator(), batch_size=BATCH_SIZE)):
 
 		perturbations = torch.stack(perturbations)
 		orig_images = torch.stack(orig_images)
@@ -91,7 +92,9 @@ if __name__ == "__main__":
 
 		#save encoded_im, target and perturbation
 		for new_p, orig_image, target, k in zip(new_perturbations, orig_images, targets, ks):
-			torch.save((torch.tensor(new_p.data), torch.tensor(orig_image.data), target, k), f'{DATA_PATH}/{target}_{k}.pth')
+			torch.save((torch.tensor(new_p.data), 
+						torch.tensor(orig_image.data), target, k), 
+						f'{DATA_PATH}/{target}_{k}.pth')
 
 		if i != 0 and i % 100 == 0:
 			test_transforms(model, name=f'iter{i}')

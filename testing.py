@@ -1,5 +1,6 @@
 
-import random, sys, os, glob, tqdm
+import random, sys, os, glob
+import argparse, tqdm
 
 import matplotlib as mpl
 mpl.use('Agg')
@@ -75,12 +76,13 @@ def test_transforms(model=None, image_files=VAL_FILES, name="test"):
 
     encoded_images = encode_binary(images, targets, model, verbose=True)
 
-    for img, encoded_im, filename in zip(images, encoded_images, image_files):
-        im.save(im.numpy(img), file=f"{OUTPUT_DIR}_original_{filename.split('/')[-1]}")
-        im.save(im.numpy(encoded_im), file=f"{OUTPUT_DIR}_encoded_{filename.split('/')[-1]}")
+    for img, encoded_im, filename, target in zip(images, encoded_images, image_files, targets):
+        im.save(im.numpy(img), file=f"{OUTPUT_DIR}{binary.str(target)}_original_{filename.split('/')[-1]}")
+        im.save(im.numpy(encoded_im), file=f"{OUTPUT_DIR}{binary.str(target)}_encoded_{filename.split('/')[-1]}")
 
     predictions = model(encoded_images).mean(dim=1).cpu().data.numpy()
     binary_loss = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
+
     logger.step("orig", binary_loss)
 
     sweep(encoded_images, targets, model,
@@ -91,17 +93,17 @@ def test_transforms(model=None, image_files=VAL_FILES, name="test"):
     sweep(encoded_images, targets, model,
             transform=lambda x, val: transforms.scale(x, rand_val=False, scale_val=val),
             name=name, transform_name="scale",
-            min_val=0.6, max_val=1.4, samples=60) 
+            min_val=0.6, max_val=1.4, samples=50) 
 
     sweep(encoded_images, targets, model,
             transform=lambda x, val: transforms.translate(x, max_val=val),
             name=name, transform_name="translate",
-            min_val=0.0, max_val=0.4, samples=10)
+            min_val=0.0, max_val=0.3, samples=10)
 
     sweep(encoded_images, targets, model,
             transform=lambda x, val: transforms.noise(x, intensity=val),
             name=name, transform_name="noise",
-            min_val=0.0, max_val=0.2, samples=5)
+            min_val=0.0, max_val=0.1, samples=15)
     model.train()
 
 
@@ -125,7 +127,3 @@ def evaluate(model, image, target):
 
 if __name__ == "__main__":
     Fire()
-
-
-
-

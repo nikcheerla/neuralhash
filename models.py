@@ -37,6 +37,19 @@ class GramMatrix(nn.Module):
 		return G.div(N * C * H * W)
 
 
+
+class ResidualBlock(nn.Module):
+    def __init__(self):
+        super(ResidualBlock, self).__init__()
+        self.classifiers = nn.ModuleList([nn.Linear(512*8, 512*8), nn.Linear(512*8, 512*8)])
+
+    def forward(self, x):
+        x_sum = x
+        for classifier in self.classifiers:
+            x = classifier(x_sum)
+            x_sum = x_sum + x
+        return x_sum
+
 """Decoding network that tries to predict on a parallel batch"""
 class DecodingNet(nn.Module):
 

@@ -22,11 +22,9 @@ import IPython
 
 import transforms
 
-EPSILON = 1e-2
-MIN_LOSS = 2e-3
-BATCH_SIZE = 96
-
-
+""" 
+Encodes a set of images with the specified binary targets, for a given number of iterations.
+"""
 def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=False, perturbation=None):
 
 	logger = Logger("encoding", ("loss", "bits"), verbose=verbose, print_every=20, plot_every=40)
@@ -69,6 +67,9 @@ def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=Fa
 	return changed_images.detach()
 
 
+""" 
+Command-line interface for encoding a single image
+"""
 def encode(model, image, target, out):
 
 	if type(model) is str:

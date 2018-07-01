@@ -82,7 +82,11 @@ def gauss(x, min_sigma=0.3, max_sigma=2, rand_val=True, sigma=1):
     return x
 
 def noise(x, intensity=0.05):
+<<<<<<< HEAD
     noise = torch.randn(x.size()).to(x.device)*intensity
+=======
+    noise = torch.randn(x.size()).to(DEVICE)*intensity
+>>>>>>> 7526ae9d5d7ba7ef1a82a7208bd3ee089629f126
     grid = F.affine_grid(affine(x), size=x.size())
     img = F.grid_sample((x+noise).clamp(min=1e-3, max=1), grid.to(x.device), padding_mode='border')
     return img
@@ -110,13 +114,15 @@ def encoding(x):
 
 
 if __name__ == "__main__":
-
-    img = im.load("images/house.png")
-    img = im.torch(img).unsqueeze(0)
-
     import matplotlib.pyplot as plt
 
-    for i in range(0, 10):
-        plt.imsave(f"output/t{i}.jpg", im.numpy(training(img).squeeze()))
+    img = im.load("data/colornet/08xQBP.jpg")
+    img = im.torch(img).unsqueeze(0)
+
+    plt.imsave(f"output/08xQBP_orig.jpg", im.numpy(img.squeeze()))
+    # returns an image after a series of transformations
+
+    for i in range(15):
+        plt.imsave(f"output/08xQBP_test_{i}.jpg", im.numpy(training(img).squeeze()))
 
 
