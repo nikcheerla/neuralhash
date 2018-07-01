@@ -104,43 +104,6 @@ def test_transforms(model=None, image_files=VAL_FILES, name="iter"):
             min_val=0.0, max_val=0.1, samples=15)
     model.train()
 
-def test_encoded_imgs(model, image_files, targets, name='test'):
-    
-    encoded_images = [im.load(image) for image in image_files]
-    encoded_images = im.stack(encoded_images)
-
-    predictions = model(encoded_images).mean(dim=1).cpu().data.numpy()
-    # score_targets = binary.target(targets).unsqueeze(1).expand_as(predictions)
-
-    binary_loss = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
-    mse_loss = np.mean([binary.mse_dist(x, y) for x, y in zip(predictions, targets)])
-    print("mse_loss = ", mse_loss)
-    print("binary_loss = ", binary_loss)
-    # bce_loss = F.binary_cross_entropy(predictions, score_targets)
-    # print("bce loss = ", bce_loss)
-    # logger.step("orig", binary_loss)
-
-    sweep(encoded_images, targets, model,
-            transform=lambda x, val: transforms.rotate(x, rand_val=False, theta=val),
-            name=name, transform_name="rotate",
-            min_val=-0.6, max_val=0.6, samples=60)
-
-    sweep(encoded_images, targets, model,
-            transform=lambda x, val: transforms.scale(x, rand_val=False, scale_val=val),
-            name=name, transform_name="scale",
-            min_val=0.6, max_val=1.4, samples=50) 
-
-    sweep(encoded_images, targets, model,
-            transform=lambda x, val: transforms.translate(x, max_val=val),
-            name=name, transform_name="translate",
-            min_val=0.0, max_val=0.3, samples=10)
-
-    sweep(encoded_images, targets, model,
-            transform=lambda x, val: transforms.noise(x, intensity=val),
-            name=name, transform_name="noise",
-            min_val=0.0, max_val=0.05, samples=10)
-    model.train()
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Encodes a set of images and benchmarks robustness.')

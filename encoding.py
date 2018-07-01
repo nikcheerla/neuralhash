@@ -22,11 +22,6 @@ import IPython
 
 import transforms
 
-EPSILON = 2e-2
-MIN_LOSS = 2e-3
-BATCH_SIZE = 96
-
-
 def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=False, perturbation=None):
 
 	logger = Logger("encoding", ("loss", "bits"), verbose=verbose, print_every=50, plot_every=50)

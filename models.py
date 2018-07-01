@@ -45,9 +45,9 @@ class ResidualBlock(nn.Module):
 
     def forward(self, x):
         x_sum = x
-        for classifier in classifiers:
+        for classifier in self.classifiers:
             x = classifier(x_sum)
-            x_sum += x
+            x_sum = x_sum + x
         return x_sum
 
 """Decoding network that tries to predict on a parallel batch"""

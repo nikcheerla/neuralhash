@@ -1,6 +1,6 @@
 
 import numpy as np
-import random, sys, os, json, glob, tqdm
+import random, sys, os, json, glob, tqdm, itertools
 
 import matplotlib as mpl
 mpl.use('Agg')
@@ -56,8 +56,9 @@ if __name__ == "__main__":
 		x = transforms.identity(x)
 		return x
 
-	model = nn.DataParallel(DecodingNet(n=48, distribution=p))
-	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=2.5e-3)
+	model = nn.DataParallel(DecodingNet(n=DIST_SIZE, distribution=p))
+	optimizer = torch.optim.Adam(
+		model.parameters(), lr=2.5e-3)
 	model.train()
 	
 	init_data('data/colornet', DATA_PATH, n=5000)
@@ -74,7 +75,7 @@ if __name__ == "__main__":
 
 	logger.add_hook(checkpoint)
 
-	for i, (perturbations, orig_images, targets, ks) in enumerate(batched(data_generator(), batch_size=64)):
+	for i, (perturbations, orig_images, targets, ks) in enumerate(batched(data_generator(), batch_size=BATCH_SIZE)):
 
 		perturbations = torch.stack(perturbations)
 		orig_images = torch.stack(orig_images)
@@ -97,9 +98,9 @@ if __name__ == "__main__":
 		for new_p, orig_image, target, k in zip(new_perturbations, orig_images, targets, ks):
 			torch.save((torch.tensor(new_p.data), torch.tensor(orig_image.data), target, k), f'{DATA_PATH}/{target}_{k}.pth')
 
-		if i % 80 == 0:
+		if (i+1) % 99 == 0:
 			test_transforms(model, name=f'iter{i}')
 	
-		if i == 800:
+		if i == 200:
 			break
 
