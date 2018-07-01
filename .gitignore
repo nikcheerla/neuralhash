@@ -11,3 +11,4 @@ jobs
 jobs/*
 output/*
 *.pth
+images/*

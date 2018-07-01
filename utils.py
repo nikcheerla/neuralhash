@@ -19,7 +19,7 @@ IMAGE_MAX = 255.0
 TARGET_SIZE = 32
 OUTPUT_DIR = "output/"
 DATA_FILES = sorted(glob.glob("data/colornet/*.jpg"))
-TRAIN_FILES, VAL_FILES = DATA_FILES[:5000], DATA_FILES[5000:5008]
+TRAIN_FILES, VAL_FILES = DATA_FILES[:5000], DATA_FILES[5000:5032]
 
 
 def corrcoef(x):

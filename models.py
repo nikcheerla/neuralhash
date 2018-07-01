@@ -37,6 +37,19 @@ class GramMatrix(nn.Module):
         return G.div(N * C * H * W)
 
 
+
+class ResidualBlock(nn.Module):
+    def __init__(self):
+        super(ResidualBlock, self).__init__()
+        self.classifiers = nn.ModuleList([nn.Linear(512*8, 512*8), nn.Linear(512*8, 512*8)])
+
+    def forward(self, x):
+        x_sum = x
+        for classifier in classifiers:
+            x = classifier(x_sum)
+            x_sum += x
+        return x_sum
+
 """Decoding network that tries to predict on a parallel batch"""
 class DecodingNet(nn.Module):
 
@@ -44,6 +57,7 @@ class DecodingNet(nn.Module):
         super(DecodingNet, self).__init__()
 
         self.features = models.squeezenet1_1(pretrained=True).features
+        # self.residual = ResidualBlock()
         self.classifier = nn.Sequential(
             nn.Linear(512*8, TARGET_SIZE*2),)
             #nn.ReLU(inplace=True),
@@ -71,6 +85,7 @@ class DecodingNet(nn.Module):
                         F.max_pool2d(x, (x.shape[2]//2))], dim=1)
         x = x.view(x.size(0), -1)
         x = (x - x.mean(dim=1, keepdim=True))/(x.std(dim=1, keepdim=True))
+        # x = self.residual(x)
         x = self.classifier(x)
         x = x.view(B, N, TARGET_SIZE, 2)#.mean(dim=0) # reshape and average
 

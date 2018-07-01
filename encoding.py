@@ -22,7 +22,7 @@ import IPython
 
 import transforms
 
-EPSILON = 9e-3
+EPSILON = 2e-2
 MIN_LOSS = 2e-3
 BATCH_SIZE = 96
 

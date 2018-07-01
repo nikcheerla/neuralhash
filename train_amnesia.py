@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
 	logger.add_hook(checkpoint)
 
-	for i, (perturbations, orig_images, targets, ks) in enumerate(batched(data_generator(), batch_size=48)):
+	for i, (perturbations, orig_images, targets, ks) in enumerate(batched(data_generator(), batch_size=64)):
 
 		perturbations = torch.stack(perturbations)
 		orig_images = torch.stack(orig_images)
@@ -97,7 +97,7 @@ if __name__ == "__main__":
 		for new_p, orig_image, target, k in zip(new_perturbations, orig_images, targets, ks):
 			torch.save((torch.tensor(new_p.data), torch.tensor(orig_image.data), target, k), f'{DATA_PATH}/{target}_{k}.pth')
 
-		if i % 100 == 0:
+		if i % 80 == 0:
 			test_transforms(model, name=f'iter{i}')
 	
 		if i == 800:

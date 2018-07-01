@@ -107,18 +107,21 @@ def test_distribution(x):
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
 
-    img = im.load("images/house.png")
+    img = im.load("data/colornet/08xQBP.jpg")
     img = im.torch(img).unsqueeze(0)
-
+    plt.imsave(f"output/08xQBP_orig.jpg", im.numpy(img.squeeze()))
     # returns an image after a series of transformations
     def p(x):
-        x = noise(x, intensity=0.05)
+        x = resize_rect(x)
+        x = rotate(scale(x, 0.6, 1.4), max_angle=30)
+        x = gauss(x, min_sigma=0.8, max_sigma=0.8)
+        x = translate(x)
         x = identity(x)
         return x
 
-    img = p(img)
-    import matplotlib.pyplot as plt
-    plt.imsave("images/transform_test.jpg", im.numpy(img.squeeze()))
+    for i in range(15):
+        plt.imsave(f"output/08xQBP_test_{i}.jpg", im.numpy(p(img).squeeze()))
 
 
