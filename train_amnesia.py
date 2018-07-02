@@ -51,9 +51,9 @@ def init_data(input_path, output_path, n=100):
 if __name__ == "__main__":	
 
 	model = nn.DataParallel(DecodingNet(n=48, distribution=transforms.encoding))
-	params = itertools.chain(model.module.classifier.parameters(), 
-							model.module.features[-1].parameters())
-	optimizer = torch.optim.Adam(params, lr=2.5e-3)
+	# params = itertools.chain(model.module.classifier.parameters(), 
+	# 						model.module.features[-1].parameters())
+	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=2.5e-3)
 	#model.train()
 	
 	#init_data('data/colornet', DATA_PATH, n=5000)

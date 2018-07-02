@@ -1,4 +1,7 @@
 
+
+# FIX RUN.PY
+
 import random, sys, os, glob, yaml
 import argparse, subprocess, shutil
 

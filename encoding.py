@@ -70,7 +70,7 @@ def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=Fa
 """ 
 Command-line interface for encoding a single image
 """
-def encode(model, image, target, out):
+def encode(model, image, target, out, max_iter=300):
 
 	if type(model) is str:
 		x = nn.DataParallel(DecodingNet(distribution=transforms.encoding, n=96))
@@ -79,7 +79,7 @@ def encode(model, image, target, out):
 
 	image = im.torch(im.load(image)).unsqueeze(0)
 	target = binary.parse(str(target))
-	encoded = encode_binary(image, [target], model, verbose=True, max_iter=300)
+	encoded = encode_binary(image, [target], model, verbose=True, max_iter=max_iter)
 	im.save(im.numpy(encoded.squeeze()), file=out)
 
 
