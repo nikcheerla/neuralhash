@@ -54,9 +54,10 @@ if __name__ == "__main__":
 	# params = itertools.chain(model.module.classifier.parameters(), 
 	# 						model.module.features[-1].parameters())
 	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=2.5e-3)
+
 	#model.train()
 	
-	#init_data('data/colornet', DATA_PATH, n=5000)
+	init_data('data/colornet', DATA_PATH, n=5000)
 
 	def data_generator():
 		path = f"{DATA_PATH}/*.pth"
@@ -92,6 +93,10 @@ if __name__ == "__main__":
 
 		#save encoded_im, target and perturbation
 		for new_p, orig_image, target, k in zip(new_perturbations, orig_images, targets, ks):
+			if random.random() < P_RESET:
+				os.remove(f'{DATA_PATH}/{target}_{k}.pth')
+				new_p = nn.Parameter(0.03*torch.randn(orig_image.size()).to(DEVICE)+0.0).detach()
+				target = binary.random(n=TARGET_SIZE)
 			torch.save((torch.tensor(new_p.data), 
 						torch.tensor(orig_image.data), target, k), 
 						f'{DATA_PATH}/{target}_{k}.pth')
@@ -99,6 +104,6 @@ if __name__ == "__main__":
 		if i != 0 and i % 100 == 0:
 			test_transforms(model, name=f'iter{i}')
 	
-		if i == 800:
+		if i == 600:
 			break
 

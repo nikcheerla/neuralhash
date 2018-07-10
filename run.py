@@ -10,6 +10,8 @@ parser = argparse.ArgumentParser(description='Runs arbitary jobs with experiment
 parser.add_argument("cmd")
 parser.add_argument('--type', default="experiment", help='type of run')
 parser.add_argument('--config', default="configuration", help='type of run')
+parser.add_argument('--shutdown', action='store_const', const=True, default=False, 
+	help='shutdown instance when finished')
 args = parser.parse_args()
 
 try:
@@ -25,24 +27,30 @@ run_data[run_name] = {"config": args.config, "cmd": args.cmd, "status": "In Prog
 
 
 process = subprocess.Popen(args.cmd, shell=True)
-
+keyboard_interrupt = False
 def monitor_process(process, run_data):
 
 	while process.poll() is None:
 		try:
 			pass
-		except (KeyboardInterrupt, SystemExit):
+		except KeyboardInterrupt:
 			# Program shut down
-			run_data[run_name] = {"config": config, "cmd": args.cmd, "status": "Shutdown"}
+			run_data[run_name] = {"config": args.config, "cmd": args.cmd, "status": "Killed"}
+			process.kill()
+			keyboard_interrupt = True
+			return
+		except SystemExit:
+			# Program shut down
+			run_data[run_name] = {"config": args.config, "cmd": args.cmd, "status": "Shutdown"}
 			process.kill()
 			return
 
 	if process.poll() == 0:
 		result = "result omitted for clarity" #input ("Add a comment describing results? [ENTER to skip]: ")
-		run_data[run_name] = {"config": config, "cmd": args.cmd, \
+		run_data[run_name] = {"config": args.config, "cmd": args.cmd, \
 							"status": "Complete", "results": result}
 	else:
-		run_data[run_name] = {"config": config, "cmd": args.cmd, "status": "Error"}
+		run_data[run_name] = {"config": args.config, "cmd": args.cmd, "status": "Error"}
 
 monitor_process(process, run_data)
 
@@ -55,7 +63,8 @@ yaml.safe_dump(run_log, open("jobs/runlog.yml", 'w'), \
 yaml.safe_dump(run_data[run_name], open(f"jobs/{run_name}/comments.yml", 'w'), \
 		allow_unicode=True, default_flow_style=False)
 
-
+if args.shutdown and not keyboard_interrupt:
+	subprocess.call("sudo shutdown -h now", shell=True)
 
 
 
