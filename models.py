@@ -1,3 +1,4 @@
+
 from __future__ import print_function
 
 import numpy as np
@@ -14,6 +15,7 @@ import torch.optim as optim
 from torch.autograd import Variable
 
 from torchvision import models
+from modules import *
 from utils import *
 
 from skimage import filters
@@ -24,31 +26,6 @@ import IPython
 import transforms
 
 
-class GramMatrix(nn.Module):
-	def forward(self, input):
-		N, C, H, W = input.size()
-
-		features = input.view(N, C, H*W)  # resise F_XL into \hat F_XL
-
-		G = torch.bmm(features, features.permute(0,2,1))  # compute the gram product
-
-		# we 'normalize' the values of the gram matrix
-		# by dividing by the number of element in each feature maps.
-		return G.div(N * C * H * W)
-
-
-
-class ResidualBlock(nn.Module):
-    def __init__(self):
-        super(ResidualBlock, self).__init__()
-        self.classifiers = nn.ModuleList([nn.Linear(512*8, 512*8), nn.Linear(512*8, 512*8)])
-
-    def forward(self, x):
-        x_sum = x
-        for classifier in self.classifiers:
-            x = classifier(x_sum)
-            x_sum = x_sum + x
-        return x_sum
 
 """Decoding network that tries to predict on a parallel batch"""
 class DecodingNet(nn.Module):
