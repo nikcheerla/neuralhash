@@ -25,7 +25,8 @@ import transforms
 """ 
 Encodes a set of images with the specified binary targets, for a given number of iterations.
 """
-def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=False, perturbation=None):
+def encode_binary(images, targets, model=DecodingNet(), 
+					max_iter=200, verbose=False, perturbation=None):
 
 	logger = Logger("encoding", ("loss", "bits"), verbose=verbose, print_every=20, plot_every=40)
 	model.n = ENCODING_DIST_SIZE
@@ -70,7 +71,11 @@ def encode_binary(images, targets, model=DecodingNet(), max_iter=200, verbose=Fa
 """ 
 Command-line interface for encoding a single image
 """
-def encode(model, image, target, out, max_iter=300):
+def encode(image, out, target=binary.str(binary.random(TARGET_SIZE)),
+			model=None, max_iter=300):
+
+	if model is None:
+		model = nn.DataParallel(DecodingNet(distribution=transforms.encoding, n=96))
 
 	if type(model) is str:
 		x = nn.DataParallel(DecodingNet(distribution=transforms.encoding, n=96))

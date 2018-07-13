@@ -40,8 +40,8 @@ def init_data(input_path, output_path, n=100):
 	shutil.rmtree(DATA_PATH)
 	os.makedirs(DATA_PATH)
 	files = glob.glob(f'{input_path}/*.jpg')
-	for k in tqdm.trange(n, ncols=50):
-		img = im.load(random.choice(files))
+	for k, img_file in tqdm.tqdm(list(enumerate(files)), ncols=50):
+		img = im.load(img_file)
 		if img is None: continue
 		img = im.torch(img).detach()
 		perturbation = nn.Parameter(0.03*torch.randn(img.size()).to(DEVICE)+0.0).detach()
@@ -57,7 +57,7 @@ if __name__ == "__main__":
 
 	#model.train()
 	
-	init_data('data/colornet', DATA_PATH, n=5000)
+	#init_data('data/colornet', DATA_PATH)
 
 	def data_generator():
 		path = f"{DATA_PATH}/*.pth"

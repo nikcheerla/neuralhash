@@ -1,36 +1,48 @@
 
-import random, sys, os, glob, yaml
+import random, sys, os, glob, yaml, time
 import argparse, subprocess, shutil
 from fire import Fire
+from utils import elapsed
+
+import IPython
 
 
-def run(cmd, type='experiment', config="default", shutdown=True):
+def run(cmd, mode='experiment', config="default", shutdown=False, ignore_error=False):
 
+	elapsed()
 	try:
 		run_log = yaml.load(open("jobs/runlog.yml"))
 	except:
 		run_log = {}
 
-	run_data = run_log[type] = run_log.get(type, {})
+	run_data = run_log[mode] = run_log.get(mode, {})
 	run_data["runs"] = run_data.get("runs", 0) + 1
-	run_name = args.type + str(run_data["runs"])
-	run_data = run_data.get(run_name, {"config": config, "cmd": cmd})
+	run_name = mode + str(run_data["runs"])
+	run_data[run_name] = run_data.get(run_name, 
+				{"config": config, "cmd": cmd, "status": "Running"})
+	run_data = run_data[run_name]
 
-	process = subprocess.Popen(cmd, shell=True, start_new_session=True, \
-							stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	print (f"Running job: {run_name}")
+	os.makedirs(f"jobs/{run_name}", exist_ok=True)
 
-	for line in iter(process.stdout.readline):
-		print (line)
+	cmd = cmd.split()
+	if cmd[0] =='python': cmd.insert(1, '-u')
+	cmd = " ".join(cmd) + f" | tee jobs/{run_name}/stdout.txt"
+	process = subprocess.Popen(cmd.split(), shell=False, \
+							universal_newlines=True)
 
-	while process.poll() is None:
-		status = ""
-		try:
-			pass
-		except KeyboardInterrupt:
-			run_data['status'] = "Killed"
-			process.kill()
+	try:
+		return_code = process.wait()
+		run_data["status"] = "Error" if return_code else "Complete"
+	except KeyboardInterrupt:
+		print ("\nKilled by user.")
+		process.kill()
+		run_data["status"] = "Killed"
 
-	run_data["status"] = "Complete" if process.poll() == 0 else "Shutdown"
+	process.kill()
+
+	if ignore_error and run_data["status"] != "Complete":
+		return
 		
 	shutil.copytree("output", f"jobs/{run_name}/output")
 	shutil.rmtree("output/")
@@ -38,11 +50,15 @@ def run(cmd, type='experiment', config="default", shutdown=True):
 
 	yaml.safe_dump(run_log, open("jobs/runlog.yml", 'w'), \
 			allow_unicode=True, default_flow_style=False)
-	yaml.safe_dump(run_data[run_name], open(f"jobs/{run_name}/comments.yml", 'w'), \
+	yaml.safe_dump(run_data, open(f"jobs/{run_name}/comments.yml", 'w'), \
 			allow_unicode=True, default_flow_style=False)
 
-	if args.shutdown and not keyboard_interrupt:
-		subprocess.call("sudo shutdown -h now", shell=True)
+	interval = elapsed()
+	print (f"Program ended after {interval:0.4f} seconds.")
+	if shutdown and run_data["status"] != "Killed" and interval > 60:
+		print (f"Shutting down in 1 minute.")
+		time.sleep(60)
+		subprocess.call("sudo shupdown -h now", shell=True)
 
 
 

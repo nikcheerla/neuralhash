@@ -4,10 +4,6 @@ from __future__ import print_function
 import numpy as np
 import random, sys, os, json
 
-import matplotlib as mpl
-mpl.use('Agg')
-import matplotlib.pyplot as plt
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -17,13 +13,10 @@ from torch.autograd import Variable
 from torchvision import models
 from modules import *
 from utils import *
-
-from skimage import filters
-from skimage.morphology import binary_dilation
+import transforms
 
 import IPython
 
-import transforms
 
 
 
@@ -141,11 +134,9 @@ class DecodingNet(nn.Module):
 
 if __name__ == "__main__":
 
-	model = nn.DataParallel(DecodingNet(n=80, distribution=transforms.training))
+	model = nn.DataParallel(DecodingNet(n=64, distribution=transforms.training))
 	images = torch.randn(48, 3, 224, 224).float().to(DEVICE).requires_grad_()
-	elapsed()
 	x = model.forward(images)
-	print (elapsed())
 
 	x.mean().backward()
 	print (x.shape)

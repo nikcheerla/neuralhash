@@ -1,11 +1,9 @@
+import sys
+from subprocess import call
 
-import subprocess
 try:
-
-	proc = subprocess.Popen("ls -lrt", shell=True,\
-			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-	for line in iter(proc.stdout.readline, ""):
-		print (line.decode(), end="")
-
+    call(['sleep', '10'], start_new_session=True)
 except KeyboardInterrupt:
-	print ("Got Keyboard interrupt")
+    print('Ctrl C')
+else:
+    print('no exception')
