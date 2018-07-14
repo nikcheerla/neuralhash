@@ -92,33 +92,49 @@ def flip(x):
     img = F.grid_sample(x, grid.to(x.device), padding_mode='border')
     return img
 
+def whiteout(x, n=5, min_scale=0.04, max_scale=0.18):
+
+    for i in range(0, n):
+        w = int(random.uniform(min_scale, max_scale)*x.shape[2])
+        h = int(random.uniform(min_scale, max_scale)*x.shape[3])
+        sx, sy = random.randrange(0, x.shape[2] - w), random.randrange(0, x.shape[3] - h)
+        mask, bias = torch.ones_like(x).to(x.device), torch.ones_like(x).to(x.device)
+        mask[:, :, sx:(sx+w), sy:(sy+h)] = 0.0
+
+        R, G, B = (random.random() for i in range(0, 3))
+        bias = torch.cat([bias[:, 0].unsqueeze(1)*R, \
+                        bias[:, 1].unsqueeze(1)*G, \
+                        bias[:, 2].unsqueeze(1)*B], dim=1)
+
+        if random.randint(0, 1) == 1:
+            bias = noise(bias, intensity=0.5)
+
+        x = mask*x + (1.0-mask)*bias
+    return x
+
 def training(x):
+    x = random.choice([gauss, noise, color_jitter, lambda x: x, lambda x: x])(x)
+    x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
     x = random.choice([gauss, noise, color_jitter, lambda x: x])(x)
     x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
-    x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
-    x = random.choice([gauss, noise, color_jitter, lambda x: x])(x)
+    x = random.choice([gauss, noise, color_jitter, lambda x: x, lambda x: x])(x)
     x = identity(x)
     return x
 
 def encoding(x):
-    x = random.choice([gauss, noise, color_jitter, lambda x: x])(x)
-    x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
-    x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
-    x = random.choice([gauss, noise, color_jitter, lambda x: x])(x)
-    x = identity(x)
-    return x
+    return training(x)
 
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    img = im.load("data/colornet/08xQBP.jpg")
+    img = im.load("images/house.png")
     img = im.torch(img).unsqueeze(0)
 
-    plt.imsave(f"output/08xQBP_orig.jpg", im.numpy(img.squeeze()))
+    plt.imsave(f"output/house_orig.jpg", im.numpy(img.squeeze()))
     # returns an image after a series of transformations
 
     for i in range(15):
-        plt.imsave(f"output/08xQBP_test_{i}.jpg", im.numpy(training(img).squeeze()))
+        plt.imsave(f"output/house_test_{i}.jpg", im.numpy(training(img).squeeze()))
 
 

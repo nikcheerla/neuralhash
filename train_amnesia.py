@@ -40,8 +40,10 @@ def init_data(input_path, output_path, n=100):
 	shutil.rmtree(DATA_PATH)
 	os.makedirs(DATA_PATH)
 	files = glob.glob(f'{input_path}/*.jpg')
-	for k in tqdm.trange(n, ncols=50):
-		img = im.load(random.choice(files))
+
+
+	for k, img_file in tqdm.tqdm(list(enumerate(files)), ncols=50):
+		img = im.load(img_file)
 		if img is None: continue
 		img = im.torch(img).detach()
 		perturbation = nn.Parameter(0.03*torch.randn(img.size()).to(DEVICE)+0.0).detach()
@@ -50,13 +52,14 @@ def init_data(input_path, output_path, n=100):
 
 if __name__ == "__main__":	
 
-	model = nn.DataParallel(DecodingNet(n=DIST_SIZE, distribution=transforms.encoding))
-	params = itertools.chain(model.module.classifier.parameters(), 
-							model.module.features[-1].parameters())
-	optimizer = torch.optim.Adam(params, lr=2.5e-3)
+	model = nn.DataParallel(DecodingNet(n=48, distribution=transforms.encoding))
+	# params = itertools.chain(model.module.classifier.parameters(), 
+	# 						model.module.features[-1].parameters())
+	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=2.5e-3)
+
 	#model.train()
 	
-	init_data('data/colornet', DATA_PATH, n=5000)
+	#init_data('data/colornet', DATA_PATH)
 
 	def data_generator():
 		path = f"{DATA_PATH}/*.pth"
@@ -96,6 +99,7 @@ if __name__ == "__main__":
 				os.remove(f'{DATA_PATH}/{k}.pth')
 				new_p = nn.Parameter(0.03*torch.randn(orig_image.size()).to(DEVICE)+0.0).detach()
 				target = binary.random(n=TARGET_SIZE)
+
 			torch.save((torch.tensor(new_p.data), 
 						torch.tensor(orig_image.data), target, k), 
 						f'{DATA_PATH}/{k}.pth')
