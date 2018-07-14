@@ -40,13 +40,15 @@ def init_data(input_path, output_path, n=100):
 	shutil.rmtree(DATA_PATH)
 	os.makedirs(DATA_PATH)
 	files = glob.glob(f'{input_path}/*.jpg')
+
+
 	for k, img_file in tqdm.tqdm(list(enumerate(files)), ncols=50):
 		img = im.load(img_file)
 		if img is None: continue
 		img = im.torch(img).detach()
 		perturbation = nn.Parameter(0.03*torch.randn(img.size()).to(DEVICE)+0.0).detach()
 		target = binary.random(n=TARGET_SIZE)
-		torch.save((perturbation, img, target, k), f'{output_path}/{target}_{k}.pth')
+		torch.save((perturbation, img, target, k), f'{output_path}/{k}.pth')
 
 if __name__ == "__main__":	
 
@@ -94,12 +96,12 @@ if __name__ == "__main__":
 		#save encoded_im, target and perturbation
 		for new_p, orig_image, target, k in zip(new_perturbations, orig_images, targets, ks):
 			if random.random() < P_RESET:
-				os.remove(f'{DATA_PATH}/{target}_{k}.pth')
+				os.remove(f'{DATA_PATH}/{k}.pth')
 				new_p = nn.Parameter(0.03*torch.randn(orig_image.size()).to(DEVICE)+0.0).detach()
 				target = binary.random(n=TARGET_SIZE)
-			torch.save((torch.tensor(new_p.data), 
-						torch.tensor(orig_image.data), target, k), 
-						f'{DATA_PATH}/{target}_{k}.pth')
+				torch.save((torch.tensor(new_p.data), 
+							torch.tensor(orig_image.data), target, k), 
+							f'{DATA_PATH}/{k}.pth')
 
 		if i != 0 and i % 100 == 0:
 			test_transforms(model, name=f'iter{i}')
