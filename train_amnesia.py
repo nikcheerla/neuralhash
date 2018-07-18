@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
 	def data_generator():
 		path = f"{DATA_PATH}/*.pth"
-		files = glob.glob(path)
+		files = glob.glob(path)  #    <--- TODO don't redo every time
 		while True:
 			yield torch.load(random.choice(files))
 
