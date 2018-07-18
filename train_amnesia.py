@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
 	#model.train()
 	
-	#init_data('data/colornet', DATA_PATH)
+	init_data('data/colornet', DATA_PATH)
 
 	def data_generator():
 		path = f"{DATA_PATH}/*.pth"
@@ -93,15 +93,15 @@ if __name__ == "__main__":
 		error = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
 		logger.step ("bits", error)
 
-		#save encoded_im, target and perturbation
-		for new_p, orig_image, target, k in zip(new_perturbations, orig_images, targets, ks):
-			if random.random() < P_RESET:
-				os.remove(f'{DATA_PATH}/{k}.pth')
-				new_p = nn.Parameter(0.03*torch.randn(orig_image.size()).to(DEVICE)+0.0).detach()
-				target = binary.random(n=TARGET_SIZE)
-				torch.save((torch.tensor(new_p.data), 
-							torch.tensor(orig_image.data), target, k), 
-							f'{DATA_PATH}/{k}.pth')
+		# #save encoded_im, target and perturbation
+		# for new_p, orig_image, target, k in zip(new_perturbations, orig_images, targets, ks):
+		# 	if random.random() < P_RESET:
+		# 		os.remove(f'{DATA_PATH}/{k}.pth')
+		# 		new_p = nn.Parameter(0.03*torch.randn(orig_image.size()).to(DEVICE)+0.0).detach()
+		# 		target = binary.random(n=TARGET_SIZE)
+		# 		torch.save((torch.tensor(new_p.data), 
+		# 					torch.tensor(orig_image.data), target, k), 
+		# 					f'{DATA_PATH}/{k}.pth')
 
 		if i != 0 and i % 100 == 0:
 			test_transforms(model, name=f'iter{i}')

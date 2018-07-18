@@ -113,11 +113,10 @@ def whiteout(x, n=5, min_scale=0.04, max_scale=0.18):
     return x
 
 def training(x):
-    x = random.choice([gauss, noise, color_jitter, lambda x: x, lambda x: x])(x)
-    x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
     x = random.choice([gauss, noise, color_jitter, lambda x: x])(x)
     x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
-    x = random.choice([gauss, noise, color_jitter, lambda x: x, lambda x: x])(x)
+    x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
+    x = random.choice([gauss, noise, color_jitter, lambda x: x])(x)
     x = identity(x)
     return x
 
