@@ -29,7 +29,7 @@ def encode_binary(images, targets, model=DecodingNet(),
 					max_iter=200, verbose=False, perturbation=None):
 
 	logger = Logger("encoding", ("loss", "bits"), verbose=verbose, print_every=20, plot_every=40)
-	model.n = ENCODING_DIST_SIZE
+	# model.n = ENCODING_DIST_SIZE
 	def loss_func(model, x):
 		scores = model.forward(x)
 		predictions = scores.mean(dim=1)
@@ -64,7 +64,7 @@ def encode_binary(images, targets, model=DecodingNet(),
 
 	if returnPerturbation:
 		return changed_images.detach(), perturbation.detach()
-	model.n = DIST_SIZE
+	# model.n = DIST_SIZE
 	return changed_images.detach()
 
 

@@ -58,7 +58,7 @@ def run(cmd, mode='experiment', config="default", shutdown=False, ignore_error=F
 	if shutdown and run_data["status"] != "Killed" and interval > 60:
 		print (f"Shutting down in 1 minute.")
 		time.sleep(60)
-		subprocess.call("sudo shupdown -h now", shell=True)
+		subprocess.call("sudo shutdown -h now", shell=True)
 
 
 

@@ -42,7 +42,7 @@ def init_data(input_path, output_path, n=100):
 	files = glob.glob(f'{input_path}/*.jpg')
 
 
-	for k, img_file in tqdm.tqdm(list(enumerate(files)), ncols=50):
+	for k, img_file in tqdm.tqdm(list(enumerate(files[:n])), ncols=50):
 		img = im.load(img_file)
 		if img is None: continue
 		img = im.torch(img).detach()
@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
 	#model.train()
 	
-	#init_data('data/colornet', DATA_PATH)
+	init_data('data/colornet', DATA_PATH, n=5000)
 
 	def data_generator():
 		path = f"{DATA_PATH}/*.pth"
