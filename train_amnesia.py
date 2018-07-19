@@ -36,13 +36,13 @@ def loss_func(model, x, targets):
 	return F.binary_cross_entropy(scores, score_targets), \
 		predictions.cpu().data.numpy().round(2)
 
-def init_data(input_path, output_path, n=100):
+def init_data(input_path, output_path, n=5000):
 	
 	shutil.rmtree(DATA_PATH)
 	os.makedirs(DATA_PATH)
 
 	for k, files in tqdm.tqdm(list(enumerate(
-						batch(glob.glob(f'{input_path}/*.jpg'), batch_size=64))), 
+						batch(glob.glob(f'{input_path}/*.jpg')[:n], batch_size=64))), 
 					ncols=50):
 
 		images = im.stack([im.load(img_file) for img_file in files]).detach()
@@ -57,7 +57,7 @@ if __name__ == "__main__":
 	# 						model.module.features[-1].parameters())
 	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=2.5e-3)
 	
-	init_data('data/colornet', DATA_PATH, n=5000)
+	init_data('data/colornet', DATA_PATH, n=100)
 
 	logger.add_hook(lambda: 
 		[print (f"Saving model to {OUTPUT_DIR}train_test.pth"),

@@ -113,22 +113,14 @@ def whiteout(x, n=5, min_scale=0.04, max_scale=0.18):
     return x
 
 def training(x):
-<<<<<<< HEAD
-    # x = random.choice([gauss, noise, color_jitter, lambda x: x, lambda x: x])(x)
-    # x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
     # x = random.choice([gauss, noise, color_jitter, lambda x: x])(x)
     # x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
-    # x = random.choice([gauss, noise, color_jitter, lambda x: x, lambda x: x])(x)
+    # x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
+    # x = random.choice([gauss, noise, color_jitter, lambda x: x])(x)
     x = resize_rect(x)
     x = rotate(scale(x, 0.6, 1.4), max_angle=30)
     x = gauss(x, min_sigma=0.8, max_sigma=1.2)
     x = translate(x)
-=======
-    x = random.choice([gauss, noise, color_jitter, lambda x: x])(x)
-    x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
-    x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
-    x = random.choice([gauss, noise, color_jitter, lambda x: x])(x)
->>>>>>> 7e6d1ed0f369f715c368a7bdc5cd74f0253e2789
     x = identity(x)
     return x
 
