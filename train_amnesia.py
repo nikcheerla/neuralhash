@@ -49,7 +49,6 @@ def init_data(input_path, output_path, n=100):
 		images = im.stack([im.load(img_file) for img_file in files]).detach()
 		perturbation = nn.Parameter(0.03*torch.randn(images.size()).to(DEVICE)+0.0)
 		targets = [binary.random(n=TARGET_SIZE) for i in range(len(images))]
-
 		torch.save((perturbation.data, images.data, targets), f'{output_path}/{k}.pth')
 
 if __name__ == "__main__":	
@@ -59,7 +58,7 @@ if __name__ == "__main__":
 	# 						model.module.features[-1].parameters())
 	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=2.5e-3)
 
-	#init_data('data/colornet', DATA_PATH)
+	init_data('data/colornet', DATA_PATH, n=5000)
 
 	logger.add_hook(lambda: 
 		[print (f"Saving model to {OUTPUT_DIR}train_test.pth"),
