@@ -7,7 +7,7 @@ from utils import elapsed
 import IPython
 
 
-def run(cmd, mode='experiment', config="default", shutdown=False, ignore_error=False):
+def run(cmd, mode='experiment', config="default", shutdown=False, debug=False):
 
 	elapsed()
 	try:
@@ -26,22 +26,36 @@ def run(cmd, mode='experiment', config="default", shutdown=False, ignore_error=F
 	os.makedirs(f"jobs/{run_name}", exist_ok=True)
 
 	cmd = cmd.split()
-	if cmd[0] =='python': cmd.insert(1, '-u')
-	cmd = " ".join(cmd) + f" | tee jobs/{run_name}/stdout.txt"
-	process = subprocess.Popen(cmd.split(), shell=False, \
+	if cmd[0] =='python' and debug: 
+		cmd[0] = 'ipython'
+		cmd.insert(1, '-i')
+	elif cmd[0] =='python': 
+		cmd.insert(1, '-u')
+	
+	print (" ".join(cmd))
+	process = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE,\
 							universal_newlines=True)
 
 	try:
+		with open(f"jobs/{run_name}/stdout.txt", 'w') as outfile:
+			for stdout_line in iter(process.stdout.readline, ""):
+				print (stdout_line, end="")
+				outfile.write(stdout_line)
+
 		return_code = process.wait()
 		run_data["status"] = "Error" if return_code else "Complete"
 	except KeyboardInterrupt:
 		print ("\nKilled by user.")
 		process.kill()
 		run_data["status"] = "Killed"
+	except OSError:
+		print ("\nSystem error.")
+		process.kill()
+		run_data["status"] = "Error"
 
 	process.kill()
 
-	if ignore_error and run_data["status"] != "Complete":
+	if debug and run_data["status"] != "Complete":
 		return
 		
 	shutil.copytree("output", f"jobs/{run_name}/output")

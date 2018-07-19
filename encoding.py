@@ -25,11 +25,14 @@ import transforms
 """ 
 Encodes a set of images with the specified binary targets, for a given number of iterations.
 """
-def encode_binary(images, targets, model=DecodingNet(), 
+def encode_binary(images, targets, model=DecodingNet(), n=None,
 					max_iter=200, verbose=False, perturbation=None):
 
 	logger = Logger("encoding", ("loss", "bits"), verbose=verbose, print_every=20, plot_every=40)
-	# model.n = ENCODING_DIST_SIZE
+	
+	if n is not None: 
+		n, model.module.n = (model.module.n, n)
+
 	def loss_func(model, x):
 		scores = model.forward(x)
 		predictions = scores.mean(dim=1)
@@ -64,7 +67,10 @@ def encode_binary(images, targets, model=DecodingNet(),
 
 	if returnPerturbation:
 		return changed_images.detach(), perturbation.detach()
-	# model.n = DIST_SIZE
+	
+	if n is not None: 
+		n, model.module.n = (model.module.n, n)
+
 	return changed_images.detach()
 
 
