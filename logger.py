@@ -22,8 +22,8 @@ class Logger(object):
         self.verbose = verbose
         self.hooks = []
 
-    def add_hook(self, hook):
-        self.hooks.append(hook)
+    def add_hook(self, hook, freq=40):
+        self.hooks.append((hook, freq))
 
     def step(self, feature, x):
         
@@ -39,15 +39,16 @@ class Logger(object):
             print (f"({self.name}) Epoch {min_timestep}: ", end="")
             for feature in self.features:
                 print (f"{feature}: {np.mean(self.data[feature][-self.print_every:]):0.4f}", end=", ")
-            print (f" ... {elapsed():0.2f} sec")
+            print (f" ... {elapsed():0.2f} sec", flush=True)
 
         if min_timestep % self.plot_every == 0 and feature == self.features[-1] and self.verbose:
 
             for feature in self.features:
                 self.plot(np.array(self.data[feature]), \
-                    f"{OUTPUT_DIR}{self.name}_{feature}.jpg");
+                    f"{OUTPUT_DIR}{self.name}_{feature}.jpg")
 
-            for hook in self.hooks:
+        for hook, freq in self.hooks:
+            if min_timestep % freq == 0 and feature == self.features[-1] and self.verbose:
                 hook()
 
     def plot(self, data, plot_file):

@@ -64,6 +64,15 @@ def color_normalize(x):
 def tve_loss(x):
 	return ((x[:,:-1,:] - x[:,1:,:])**2).sum() + ((x[:,:,:-1] - x[:,:,1:])**2).sum()
 
+def batch(datagen, batch_size=32):
+	arr = []
+	for data in datagen:
+		arr.append(data)
+		if len(arr) == batch_size:
+			yield arr
+			arr = []
+	yield arr
+
 def batched(datagen, batch_size=32):
 	arr = []
 	for data in datagen:
