@@ -8,6 +8,7 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 
 import torch
+torch.backends.cudnn.benchmark=True
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -58,7 +59,7 @@ if __name__ == "__main__":
 	# 						model.module.features[-1].parameters())
 	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=2.5e-3)
 
-	init_data('data/colornet', DATA_PATH)
+	#init_data('data/colornet', DATA_PATH)
 
 	logger.add_hook(lambda: 
 		[print (f"Saving model to {OUTPUT_DIR}train_test.pth"),
@@ -86,6 +87,6 @@ if __name__ == "__main__":
 		error = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
 		logger.step ("bits", error)
 
-		if i != 0 and i % 100 == 0:
+		if i == 0 and i % 100 == 0:
 			test_transforms(model, name=f'iter{i}')
 

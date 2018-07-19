@@ -31,6 +31,7 @@ def encode_binary(images, targets, model=DecodingNet(), n=None,
 	logger = Logger("encoding", ("loss", "bits"), verbose=verbose, print_every=20, plot_every=40)
 	
 	if n is not None: 
+		if verbose: print (f"Changing distribution size: {model.module.n} -> {n}")
 		n, model.module.n = (model.module.n, n)
 
 	def loss_func(model, x):
@@ -65,31 +66,33 @@ def encode_binary(images, targets, model=DecodingNet(), n=None,
 		logger.step('loss', loss)
 		logger.step('bits', error)
 
+	if n is not None: 
+		if verbose: print (f"Fixing distribution size: {model.module.n} -> {n}")
+		n, model.module.n = (model.module.n, n)
+
 	if returnPerturbation:
 		return changed_images.detach(), perturbation.detach()
-	
-	if n is not None: 
-		n, model.module.n = (model.module.n, n)
+
 	return changed_images.detach()
 
 
 """ 
 Command-line interface for encoding a single image
 """
-def encode(image, out, target=binary.str(binary.random(TARGET_SIZE)),
+def encode(image, out, target=binary.str(binary.random(TARGET_SIZE)), n=96,
 			model=None, max_iter=300):
 
 	if model is None:
-		model = nn.DataParallel(DecodingNet(distribution=transforms.encoding, n=96))
+		model = nn.DataParallel(DecodingNet(distribution=transforms.encoding, n=n))
 
 	if type(model) is str:
-		x = nn.DataParallel(DecodingNet(distribution=transforms.encoding, n=96))
+		x = nn.DataParallel(DecodingNet(distribution=transforms.encoding, n=n))
 		x.module.load(model)
 		model = x
 
 	image = im.torch(im.load(image)).unsqueeze(0)
 	target = binary.parse(str(target))
-	encoded = encode_binary(image, [target], model, verbose=True, max_iter=max_iter)
+	encoded = encode_binary(image, [target], model, n=n, verbose=True, max_iter=max_iter)
 	im.save(im.numpy(encoded.squeeze()), file=out)
 
 
