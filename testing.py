@@ -59,7 +59,7 @@ def sweep(images, targets, model, transform, \
     plt.cla(); plt.clf(); plt.close()
 
 
-def test_transforms(model=None, image_files=VAL_FILES, name="test"):
+def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=200):
 
     if model is None:
         model = nn.DataParallel(DecodingNet(distribution=transforms.encoding, n=64))
@@ -74,7 +74,7 @@ def test_transforms(model=None, image_files=VAL_FILES, name="test"):
     targets = [binary.random(n=TARGET_SIZE) for _ in range(0, len(images))]
     model.eval()
 
-    encoded_images = encode_binary(images, targets, model, n=96, verbose=True)
+    encoded_images = encode_binary(images, targets, model, n=96, verbose=True, max_iter=max_iter)
 
     for img, encoded_im, filename, target in zip(images, encoded_images, image_files, targets):
         im.save(im.numpy(img), file=f"{OUTPUT_DIR}{binary.str(target)}_original_{filename.split('/')[-1]}")
@@ -85,25 +85,25 @@ def test_transforms(model=None, image_files=VAL_FILES, name="test"):
 
     logger.step("orig", binary_loss)
 
-    sweep(encoded_images, targets, model,
-            transform=lambda x, val: transforms.rotate(x, rand_val=False, theta=val),
-            name=name, transform_name="rotate",
-            min_val=-0.6, max_val=0.6, samples=60)
+    # sweep(encoded_images, targets, model,
+    #         transform=lambda x, val: transforms.rotate(x, rand_val=False, theta=val),
+    #         name=name, transform_name="rotate",
+    #         min_val=-0.6, max_val=0.6, samples=60)
 
-    sweep(encoded_images, targets, model,
-            transform=lambda x, val: transforms.scale(x, rand_val=False, scale_val=val),
-            name=name, transform_name="scale",
-            min_val=0.6, max_val=1.4, samples=50) 
+    # sweep(encoded_images, targets, model,
+    #         transform=lambda x, val: transforms.scale(x, rand_val=False, scale_val=val),
+    #         name=name, transform_name="scale",
+    #         min_val=0.6, max_val=1.4, samples=50) 
 
-    sweep(encoded_images, targets, model,
-            transform=lambda x, val: transforms.translate(x, max_val=val),
-            name=name, transform_name="translate",
-            min_val=0.0, max_val=0.3, samples=10)
+    # sweep(encoded_images, targets, model,
+    #         transform=lambda x, val: transforms.translate(x, max_val=val),
+    #         name=name, transform_name="translate",
+    #         min_val=0.0, max_val=0.3, samples=10)
 
-    sweep(encoded_images, targets, model,
-            transform=lambda x, val: transforms.noise(x, intensity=val),
-            name=name, transform_name="noise",
-            min_val=0.0, max_val=0.1, samples=15)
+    # sweep(encoded_images, targets, model,
+    #         transform=lambda x, val: transforms.noise(x, intensity=val),
+    #         name=name, transform_name="noise",
+    #         min_val=0.0, max_val=0.1, samples=15)
     model.train()
 
 
@@ -126,4 +126,10 @@ def evaluate(model, image, target):
 
 
 if __name__ == "__main__":
+    batch_size = 64
+    for i in range(0, 32):
+        test_transforms(model='jobs/experiment4/output/train_test.pth', 
+            image_files=TRAIN_FILES[i*batch_size:(i+1)*batch_size], name="sample", max_iter=120)
     Fire()
+
+

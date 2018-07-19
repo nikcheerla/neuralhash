@@ -37,13 +37,13 @@ def loss_func(model, x, targets):
 	return F.binary_cross_entropy(scores, score_targets), \
 		predictions.cpu().data.numpy().round(2)
 
-def init_data(input_path, output_path, n=100):
+def init_data(input_path, output_path, n=5000):
 	
 	shutil.rmtree(DATA_PATH)
 	os.makedirs(DATA_PATH)
 
 	for k, files in tqdm.tqdm(list(enumerate(
-						batch(glob.glob(f'{input_path}/*.jpg'), batch_size=64))), 
+						batch(glob.glob(f'{input_path}/*.jpg')[:n], batch_size=64))), 
 					ncols=50):
 
 		images = im.stack([im.load(img_file) for img_file in files]).detach()
