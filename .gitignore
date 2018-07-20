@@ -7,8 +7,8 @@ data
 sftp-config.json
 output
 jobs
-<<<<<<< HEAD
 jobs/*
 output/*
 *.pth
 images/*
+.DS_Store

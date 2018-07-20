@@ -15,11 +15,11 @@ import random
 # CRITICAL HYPER PARAMS
 EPSILON = 9e-3
 BATCH_SIZE = 64
-DIST_SIZE = 64
+DIST_SIZE = 40
 ENCODING_DIST_SIZE = 96
 TARGET_SIZE = 32
 VAL_SIZE = 8
-P_RESET = 0 # prob that a encoded image is reset
+P_RESET = 0.03 # prob that a encoded image is reset
 
 USE_CUDA = torch.cuda.is_available()
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -72,7 +72,8 @@ def batch(datagen, batch_size=32):
 		if len(arr) == batch_size:
 			yield arr
 			arr = []
-	yield arr
+	if len(arr) != 0:
+		yield arr
 
 def batched(datagen, batch_size=32):
 	arr = []
@@ -81,17 +82,18 @@ def batched(datagen, batch_size=32):
 		if len(arr) == batch_size:
 			yield list(zip(*arr))
 			arr = []
-	yield list(zip(*arr))
+	if len(arr) != 0:
+		yield list(zip(*arr))
 
 def elapsed(times=[time.time()]):
 	times.append(time.time())
 	return times[-1] - times[-2]
 
-def gaussian_filter(x, kernel_size=5, sigma=3):
+def gaussian_filter(kernel_size=5, sigma=1.0):
 
-	channels = x.shape[1]
+	channels = 3
 	# Create a x, y coordinate grid of shape (kernel_size, kernel_size, 2)
-	x_cord = torch.arange(kernel_size).to(x.device)
+	x_cord = torch.arange(kernel_size).to(DEVICE)
 	x_grid = x_cord.repeat(kernel_size).view(kernel_size, kernel_size)
 	y_grid = x_grid.t()
 	xy_grid = torch.stack([x_grid, y_grid], dim=-1)
@@ -108,20 +110,13 @@ def gaussian_filter(x, kernel_size=5, sigma=3):
 	                      (2*variance)
 	                  )
 	# Make sure sum of values in gaussian kernel equals 1.
-	gaussian_kernel = gaussian_kernel.to(x.device) / torch.sum(gaussian_kernel)
+	gaussian_kernel = gaussian_kernel.to(DEVICE) / torch.sum(gaussian_kernel)
 
 	# Reshape to 2d depthwise convolutional weight
 	gaussian_kernel = gaussian_kernel.view(1, 1, kernel_size, kernel_size)
 	gaussian_kernel = gaussian_kernel.repeat(channels, 1, 1, 1)
 
-	gaussian_filter = nn.Conv2d(in_channels=channels, out_channels=channels,
-	                            kernel_size=kernel_size, groups=channels, bias=False,
-	                            padding=kernel_size//2)
-
-	gaussian_filter.weight.data = gaussian_kernel
-	gaussian_filter.weight.requires_grad = False
-	return gaussian_filter
-
+	return gaussian_kernel
 
 """Image manipulation methods"""
 class im(object):
