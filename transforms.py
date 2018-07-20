@@ -65,14 +65,14 @@ def translate(x, max_val=0.3):
     img = F.grid_sample(x, grid, padding_mode='border')
     return img
 
-def gauss(x, min_sigma=0.3, max_sigma=2, rand_val=True, sigma=1):
+def gauss(x, min_sigma=0.3, max_sigma=2, rand_val=True, sigma=1, filter=gaussian_filter()):
 
     if rand_val: sigma = random.uniform(min_sigma, max_sigma)
-    conv = gaussian_filter(x, 5, sigma)
-    return conv(x).clamp(min=1e-3, max=1)
+    x = F.conv2d(x, weight=filter.to(x.device), bias=None, groups=3, padding=2)
+    return x.clamp(min=1e-3, max=1)
 
 def noise(x, intensity=0.05):
-    noise = dtype(x.size(), device=x.device).normal_()*intensity
+    noise = dtype(x.size(), device=x.device).normal_().requires_grad_(False)*intensity
     img = (x + noise).clamp(min=1e-3, max=1)
     return img
 
@@ -83,7 +83,7 @@ def flip(x):
 
 def whiteout(x, n=6, min_scale=0.04, max_scale=0.18):
 
-    noise = dtype(x.size(), device=x.device).normal_()*0.5
+    noise = dtype(x.size(), device=x.device).normal_().requires_grad_(False)*0.5
 
     for i in range(0, n):
         w = int(random.uniform(min_scale, max_scale)*x.shape[2])

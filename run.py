@@ -23,8 +23,9 @@ def run(cmd, mode='experiment', config="default", shutdown=False, debug=False):
 	run_data = run_data[run_name]
 
 	print (f"Running job: {run_name}")
-	shutil.rmtree("output/")
-	os.makedirs("output", exist_ok=True)
+
+	shutil.rmtree("output/", ignore_errors=True)
+	os.makedirs("output/")
 	os.makedirs(f"jobs/{run_name}", exist_ok=True)
 
 	cmd = cmd.split()
@@ -61,7 +62,6 @@ def run(cmd, mode='experiment', config="default", shutdown=False, debug=False):
 		return
 		
 	shutil.copytree("output", f"jobs/{run_name}/output")
-	os.makedirs("output/", exist_ok=True)
 
 	yaml.safe_dump(run_log, open("jobs/runlog.yml", 'w'), \
 			allow_unicode=True, default_flow_style=False)

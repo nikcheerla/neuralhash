@@ -37,13 +37,16 @@ def loss_func(model, x, targets):
 	return F.binary_cross_entropy(scores, score_targets), \
 		predictions.cpu().data.numpy().round(2)
 
-def init_data(input_path, output_path, n=5000):
+def init_data(input_path, output_path, n=None):
 	
 	shutil.rmtree(DATA_PATH)
 	os.makedirs(DATA_PATH)
 
+	image_files = glob.glob(f'{input_path}/*.jpg')
+	if n is not None: image_files = image_files[0:n]
+
 	for k, files in tqdm.tqdm(list(enumerate(
-						batch(glob.glob(f'{input_path}/*.jpg')[:n], batch_size=64))), 
+						batch(image_files, batch_size=BATCH_SIZE))), 
 					ncols=50):
 
 		images = im.stack([im.load(img_file) for img_file in files]).detach()
@@ -53,12 +56,11 @@ def init_data(input_path, output_path, n=5000):
 
 if __name__ == "__main__":	
 
-	model = nn.DataParallel(DecodingNet(n=48, distribution=transforms.encoding))
+	model = nn.DataParallel(DecodingNet(n=DIST_SIZE, distribution=transforms.encoding))
 	# params = itertools.chain(model.module.classifier.parameters(), 
 	# 						model.module.features[-1].parameters())
 	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=2.5e-3)
-
-	init_data('data/colornet', DATA_PATH, n=5000)
+	#init_data('data/colornet', DATA_PATH)
 
 	logger.add_hook(lambda: 
 		[print (f"Saving model to {OUTPUT_DIR}train_test.pth"),
@@ -67,7 +69,7 @@ if __name__ == "__main__":
 	)
 
 	files = glob.glob(f"{DATA_PATH}/*.pth")
-	for i, save_file in enumerate(random.choice(files) for i in range(0, 600)):
+	for i, save_file in enumerate(random.choice(files) for i in range(0, 800)):
 
 		perturbation, images, targets = torch.load(save_file)
 		perturbation.requires_grad = True
