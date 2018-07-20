@@ -66,7 +66,34 @@ class DecodingNet(nn.Module):
 		torch.save(self.state_dict(), file_path)
 
 
+"""CNN that discriminates between encoded im and original im"""
+class Discriminator(nn.Module):
+	
+	def __init__(self):
+		super(Discriminator, self).__init__()
 
+		self.features = models.vgg11(pretrained=True).features
+		self.classifier = nn.Sequential(
+			nn.Linear(50176, 2),)
+		self.to(DEVICE)
+
+	def forward(self, x):
+		N, C, H, W = x.shape
+		x = transforms.identity(x)
+
+		x = torch.cat([((x[:, 0]-0.485)/(0.229)).unsqueeze(1),
+			((x[:, 1]-0.456)/(0.224)).unsqueeze(1),
+			((x[:, 2]-0.406)/(0.225)).unsqueeze(1)], dim=1)
+		
+		x = self.features(x)
+		x = self.classifier(x.view(N//2, -1))
+		return F.softmax(x, dim=1)
+		
+	def load(self, file_path):
+		self.load_state_dict(torch.load(file_path))
+
+	def save(self, file_path):
+		torch.save(self.state_dict(), file_path)
 # """Decoding network that tries to predict a
 # binary value of size target_size """
 # class DilatedDecodingNet(nn.Module):
@@ -134,8 +161,10 @@ class DecodingNet(nn.Module):
 
 if __name__ == "__main__":
 
-	model = nn.DataParallel(DecodingNet(n=64, distribution=transforms.training))
-	images = torch.randn(48, 3, 224, 224).float().to(DEVICE).requires_grad_()
+	model = Discriminator()
+
+	# model = nn.DataParallel(DecodingNet(n=64, distribution=transforms.training))
+	images = torch.randn(48, 3, 224, 224).float().to(DEVICE)
 	x = model.forward(images)
 
 	x.mean().backward()

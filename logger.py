@@ -26,7 +26,7 @@ class Logger(object):
         self.hooks.append((hook, freq))
 
     def step(self, feature, x):
-        
+
         if isinstance(x, torch.Tensor):
             x = x.data.cpu().numpy().mean()
 
