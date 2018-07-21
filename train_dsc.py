@@ -17,58 +17,71 @@ from torch.autograd import Variable
 from utils import *
 import transforms
 from encoding import encode_binary
-from models import Discriminator
+from models import UNet
 from logger import Logger
 
-from skimage.morphology import binary_dilation
+from sklearn.metrics import roc_auc_score
+from scipy.stats import pearsonr
 import IPython
 
 DATA_PATH = 'data/encode_120'
-logger = Logger("train_dsc", ("loss", "acc"), print_every=5, plot_every=20)
+logger = Logger("train_dsc", ("loss", "corr"), print_every=5, plot_every=20)
 
 def loss_func(model, x, y):
-	N = y.size(0)
-	scores = model.forward(x)
-	acc = np.sum([1 if scores[i,y[i]] > 0.5 else 0 for i in range(N)]) / N
-	return F.cross_entropy(scores, y), acc
+	cleaned = model.forward(x)
+	corr, p = pearsonr(cleaned.data.cpu().numpy().flatten(), y.data.cpu().numpy().flatten())
+	return (cleaned - y).pow(2).sum(), corr
 
-def data_gen(batch_size):
-	files = glob.glob(f"{DATA_PATH}/*encoded*.jpg")
+def data_gen(files, batch_size=64):
 	while True:
 		enc_files = random.sample(files, batch_size)
 		orig_files = [f.replace('encoded', 'original') for f in enc_files]
-		y = torch.zeros(batch_size, dtype=torch.long, device=DEVICE)
-		x = []
-		for i in range(batch_size):
-			y[i] = random.randint(0, 1)
-			if y[i] == 0:
-				x.extend([im.load(enc_files[i]), im.load(orig_files[i])])
-			else:
-				x.extend([im.load(orig_files[i]), im.load(enc_files[i])])
-		x = torch.stack([im.torch(img) for img in x])
-		yield x, y
 
-if __name__ == "__main__":	
+		encoded_ims = [im.load(image) for image in enc_files]
+		original_ims = [im.load(image) for image in orig_files]
+		encoded, original = im.stack(encoded_ims), im.stack(original_ims)
+		yield encoded, (encoded-original)
 
-	model = nn.DataParallel(Discriminator())
+def viz_preds(model, files, batch_size=32):
 
-	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=1e-3)
+
+if __name__ == "__main__":
+
+	model = nn.DataParallel(UNet())
+	model.train()
+
+	optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+	# optimizer.load_state_dict('output/unet_opt.pth')	
+	model.module.load('jobs/experiment_unet/output/train_unet.pth')
+
+	#### TEMP VIZ #####
+	viz_preds(model, files, batch_size)
 
 	logger.add_hook(lambda: 
-		[print (f"Saving model to {OUTPUT_DIR}train_dsc.pth"),
-		model.module.save(OUTPUT_DIR + "train_dsc.pth")],
+		[print (f"Saving model/opt to {OUTPUT_DIR}train_unet.pth"),
+		model.module.save(OUTPUT_DIR + "train_unet.pth"),
+		torch.save(optimizer.state_dict(), OUTPUT_DIR + "unet_opt.pth")],
 		freq=100,
 	)
 
-	for i, (x, y) in enumerate(data_gen(128)):
-		loss, acc = loss_func(model, x, y)
-		# print(f'loss: {loss.data.cpu().numpy()}')
-		logger.step ("loss", loss)
-		logger.step ("acc", acc)
+	files = glob.glob(f"{DATA_PATH}/*encoded*.jpg")
+	train_files, val_files = files[:-128], files[-128:]
+	x_val, y_val = next(data_gen(val_files, 128))
+
+	for i, (x, y) in enumerate(data_gen(train_files, 128)):
+		loss, corr = loss_func(model, x, y)
+
+		logger.step ("loss", min(5000, loss))
+		logger.step ("corr", corr)
 
 		optimizer.zero_grad()
 		loss.backward()
 		optimizer.step()
+
+		if i % 20 == 0:
+			val_loss = loss_func(model, x_val, y_val)
+			print(f'val_loss = {val_loss}')
 
 		if i == 2000: break
 
