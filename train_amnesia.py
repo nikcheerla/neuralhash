@@ -60,7 +60,7 @@ if __name__ == "__main__":
 	# params = itertools.chain(model.module.classifier.parameters(), 
 	# 						model.module.features[-1].parameters())
 	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=2.5e-3)
-	#init_data('data/colornet', DATA_PATH)
+	init_data('data/colornet', DATA_PATH)
 
 	logger.add_hook(lambda: 
 		[print (f"Saving model to {OUTPUT_DIR}train_test.pth"),
@@ -69,7 +69,7 @@ if __name__ == "__main__":
 	)
 
 	files = glob.glob(f"{DATA_PATH}/*.pth")
-	for i, save_file in enumerate(random.choice(files) for i in range(0, 800)):
+	for i, save_file in enumerate(random.choice(files) for i in range(0, 1000)):
 
 		perturbation, images, targets = torch.load(save_file)
 		perturbation.requires_grad = True

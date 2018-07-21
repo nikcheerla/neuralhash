@@ -85,25 +85,25 @@ def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=200
 
     logger.step("orig", binary_loss)
 
-    # sweep(encoded_images, targets, model,
-    #         transform=lambda x, val: transforms.rotate(x, rand_val=False, theta=val),
-    #         name=name, transform_name="rotate",
-    #         min_val=-0.6, max_val=0.6, samples=60)
+    sweep(encoded_images, targets, model,
+            transform=lambda x, val: transforms.rotate(x, rand_val=False, theta=val),
+            name=name, transform_name="rotate",
+            min_val=-0.6, max_val=0.6, samples=60)
 
-    # sweep(encoded_images, targets, model,
-    #         transform=lambda x, val: transforms.scale(x, rand_val=False, scale_val=val),
-    #         name=name, transform_name="scale",
-    #         min_val=0.6, max_val=1.4, samples=50) 
+    sweep(encoded_images, targets, model,
+            transform=lambda x, val: transforms.scale(x, rand_val=False, scale_val=val),
+            name=name, transform_name="scale",
+            min_val=0.6, max_val=1.4, samples=50) 
 
-    # sweep(encoded_images, targets, model,
-    #         transform=lambda x, val: transforms.translate(x, max_val=val),
-    #         name=name, transform_name="translate",
-    #         min_val=0.0, max_val=0.3, samples=10)
+    sweep(encoded_images, targets, model,
+            transform=lambda x, val: transforms.translate(x, max_val=val),
+            name=name, transform_name="translate",
+            min_val=0.0, max_val=0.3, samples=10)
 
-    # sweep(encoded_images, targets, model,
-    #         transform=lambda x, val: transforms.noise(x, intensity=val),
-    #         name=name, transform_name="noise",
-    #         min_val=0.0, max_val=0.1, samples=15)
+    sweep(encoded_images, targets, model,
+            transform=lambda x, val: transforms.noise(x, intensity=val),
+            name=name, transform_name="noise",
+            min_val=0.0, max_val=0.1, samples=15)
     model.train()
 
 
