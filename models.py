@@ -74,7 +74,10 @@ class Discriminator(nn.Module):
 
 		self.features = models.vgg11(pretrained=True).features
 		self.classifier = nn.Sequential(
-			nn.Linear(50176, 2),)
+			nn.Linear(50176, 1000),
+			nn.ReLU(),
+			nn.BatchNorm1d(1000),
+			nn.Linear(1000, 2))
 		self.to(DEVICE)
 
 	def forward(self, x):
@@ -87,6 +90,7 @@ class Discriminator(nn.Module):
 		
 		x = self.features(x)
 		x = self.classifier(x.view(N//2, -1))
+
 		return F.softmax(x, dim=1)
 		
 	def load(self, file_path):

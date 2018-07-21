@@ -32,8 +32,7 @@ def loss_func(model, x, y):
 	acc = np.sum([1 if scores[i,y[i]] > 0.5 else 0 for i in range(N)]) / N
 	return F.cross_entropy(scores, y), acc
 
-def data_gen(batch_size):
-	files = glob.glob(f"{DATA_PATH}/*encoded*.jpg")
+def data_gen(files, batch_size=128):
 	while True:
 		enc_files = random.sample(files, batch_size)
 		orig_files = [f.replace('encoded', 'original') for f in enc_files]
@@ -48,11 +47,13 @@ def data_gen(batch_size):
 		x = torch.stack([im.torch(img) for img in x])
 		yield x, y
 
-if __name__ == "__main__":	
+if __name__ == "__main__":
 
 	model = nn.DataParallel(Discriminator())
-
-	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=1e-3)
+	model.train()
+	params = itertools.chain(model.module.classifier.parameters(), 
+						model.module.features[-3:].parameters())
+	optimizer = torch.optim.Adam(params, lr=1e-3)
 
 	logger.add_hook(lambda: 
 		[print (f"Saving model to {OUTPUT_DIR}train_dsc.pth"),
@@ -60,7 +61,11 @@ if __name__ == "__main__":
 		freq=100,
 	)
 
-	for i, (x, y) in enumerate(data_gen(128)):
+	files = glob.glob(f"{DATA_PATH}/*encoded*.jpg")
+	train_files, val_files = files[:-128], files[-128:]
+	x_val, y_val = next(data_gen(val_files, 128))
+
+	for i, (x, y) in enumerate(data_gen(train_files, 128)):
 		loss, acc = loss_func(model, x, y)
 		# print(f'loss: {loss.data.cpu().numpy()}')
 		logger.step ("loss", loss)
@@ -70,5 +75,9 @@ if __name__ == "__main__":
 		loss.backward()
 		optimizer.step()
 
-		if i == 2000: break
+		if i % 20 == 0:
+			val_loss, val_acc = loss_func(model, x_val, y_val)
+			print(f'val_loss = {val_loss}, val_acc = {val_acc}')
+
+		if i == 400: break
 
