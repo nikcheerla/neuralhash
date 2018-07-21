@@ -26,7 +26,7 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 IMAGE_MAX = 255.0
 OUTPUT_DIR = "output/"
 DATA_FILES = sorted(glob.glob("data/colornet/*.jpg"))
-TRAIN_FILES, VAL_FILES = DATA_FILES[:5000], DATA_FILES[5000:5000+VAL_SIZE]
+TRAIN_FILES, VAL_FILES = DATA_FILES[:-16], DATA_FILES[-16:]
 dtype = torch.cuda.FloatTensor if USE_CUDA else torch.FloatTensor
 
 
@@ -47,6 +47,12 @@ def corrcoef(x):
 	c = torch.clamp(c, -1.0, 1.0)
 
 	return c
+
+def gram(input):
+	N, C, H, W = input.size()
+	features = input.view(N, C, H*W)  # resise F_XL into \hat F_XL
+	G = torch.bmm(features, features.permute(0,2,1))  # compute the gram product
+	return G.div(N*C*H*W)
 
 def zca(x):
 	sigma = torch.mm(x.t(), x) / x.shape[0]

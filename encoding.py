@@ -91,6 +91,7 @@ def encode(image, out, target=binary.str(binary.random(TARGET_SIZE)), n=96,
 		model = x
 
 	image = im.torch(im.load(image)).unsqueeze(0)
+	print ("Target: ", target)
 	target = binary.parse(str(target))
 	encoded = encode_binary(image, [target], model, n=n, verbose=True, max_iter=max_iter)
 	im.save(im.numpy(encoded.squeeze()), file=out)

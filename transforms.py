@@ -81,7 +81,7 @@ def flip(x):
     img = F.grid_sample(x, grid, padding_mode='border')
     return img
 
-def whiteout(x, n=6, min_scale=0.04, max_scale=0.18):
+def whiteout(x, n=6, min_scale=0.04, max_scale=0.2):
 
     noise = dtype(x.size(), device=x.device).normal_().requires_grad_(False)*0.5
 
@@ -107,6 +107,7 @@ def training(x):
     x = random.choice([flip, whiteout, lambda x: x])(x)
     x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
     x = random.choice([gauss, noise, color_jitter, whiteout, lambda x: x, lambda x: x])(x)
+    x = identity(x)
     return x
 
 def encoding(x):

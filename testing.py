@@ -107,8 +107,7 @@ def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=200
     model.train()
 
 
-def evaluate(model, image, target):
-
+def evaluate(model, image, target, test_transforms=True):
     if type(model) is str:
         x = nn.DataParallel(DecodingNet(distribution=transforms.encoding, n=64))
         x.module.load(model)
@@ -122,14 +121,16 @@ def evaluate(model, image, target):
     print (f"Target: {binary.str(target)}, Prediction: {binary.str(prediction)}, \
             Distance: {binary.distance(target, prediction)}")
 
+    if test_transforms:
+        sweep(image, [target], model,
+                transform=lambda x, val: transforms.rotate(x, rand_val=False, theta=val),
+                name="eval", transform_name="rotate",
+                min_val=-0.6, max_val=0.6, samples=60)
+
 
 
 
 if __name__ == "__main__":
-    batch_size = 64
-    for i in range(0, 32):
-        test_transforms(model='jobs/experiment4/output/train_test.pth', 
-            image_files=TRAIN_FILES[i*batch_size:(i+1)*batch_size], name="sample", max_iter=120)
     Fire()
 
 

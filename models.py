@@ -11,7 +11,6 @@ import torch.optim as optim
 from torch.autograd import Variable
 
 from torchvision import models
-from modules import *
 from utils import *
 import transforms
 
@@ -46,9 +45,7 @@ class DecodingNet(nn.Module):
 			((x[:, :, 2]-0.406)/(0.225)).unsqueeze(2)], dim=2)
 
 		x = x.view(B*N, C, H, W)
-
 		x = self.features(x)
-		#x = self.bn(x)
 
 		x = torch.cat([F.avg_pool2d(x, (x.shape[2]//2)), \
 						F.max_pool2d(x, (x.shape[2]//2))], dim=1)
@@ -64,6 +61,82 @@ class DecodingNet(nn.Module):
 
 	def save(self, file_path):
 		torch.save(self.state_dict(), file_path)
+
+
+
+
+
+"""Decoding network that tries to predict on a parallel batch"""
+class DecodingGramNet(nn.Module):
+
+	def __init__(self, distribution=transforms.identity, n=1):
+		super(DecodingGramNet, self).__init__()
+
+		self.features = models.squeezenet1_1(pretrained=True).features
+		self.gram_classifiers = nn.ModuleList([
+			nn.Linear(256**2, 256),
+			nn.Linear(384**2, 256),
+			nn.Linear(512**2, 256),
+			])
+		self.indices = [8, 10, 12]
+		self.classifier = nn.Linear(256*3, TARGET_SIZE*2)
+		self.distribution, self.n = distribution, n
+		self.to(DEVICE)
+
+	def forward(self, x):
+
+		x = torch.cat([self.distribution(x).unsqueeze(1) \
+						for i in range(0, self.n)], dim=1)
+		B, N, C, H, W = x.shape
+
+		x = torch.cat([((x[:, :, 0]-0.485)/(0.229)).unsqueeze(2),
+			((x[:, :, 1]-0.456)/(0.224)).unsqueeze(2),
+			((x[:, :, 2]-0.406)/(0.225)).unsqueeze(2)], dim=2)
+
+		x = x.view(B*N, C, H, W)
+
+		layers = list(self.features._modules.values())
+		gram_maps = []
+
+		for i, layer in enumerate(layers):
+			x = layer(x)
+
+			j = self.indices.index(i) if i in self.indices else None
+
+			if j is not None:
+				y = gram(x).view(x.shape[0], -1)
+				z = self.gram_classifiers[j](y)
+				gram_maps.append(z)
+
+			print (i, x.shape)
+
+		# gram_maps = []
+		# for layer, clf in zip(layers[-3:], self.gram_classifiers):
+		# 	x = layer(x)
+		# 	y = gram(x).view(x.shape[0], -1)
+		# 	print (x.shape, y.shape)
+		# 	print (clf)
+		# 	#gram_maps.append(clf(y))
+
+		x = torch.cat(gram_maps, dim=1)
+
+		x = (x - x.mean(dim=1, keepdim=True))/(x.std(dim=1, keepdim=True))
+		x = self.classifier(x)
+		x = x.view(B, N, TARGET_SIZE, 2)#.mean(dim=0) # reshape and average
+
+		return F.softmax(x, dim=3)[:,:, :, 0].clamp(min=0, max=1)
+
+
+	def load(self, file_path):
+		self.load_state_dict(torch.load(file_path))
+
+	def save(self, file_path):
+		torch.save(self.state_dict(), file_path)
+
+
+
+
+
 
 
 """CNN that discriminates between encoded im and original im"""
@@ -94,6 +167,8 @@ class Discriminator(nn.Module):
 
 	def save(self, file_path):
 		torch.save(self.state_dict(), file_path)
+
+
 # """Decoding network that tries to predict a
 # binary value of size target_size """
 # class DilatedDecodingNet(nn.Module):
@@ -161,10 +236,8 @@ class Discriminator(nn.Module):
 
 if __name__ == "__main__":
 
-	model = Discriminator()
-
-	# model = nn.DataParallel(DecodingNet(n=64, distribution=transforms.training))
-	images = torch.randn(48, 3, 224, 224).float().to(DEVICE)
+	model = nn.DataParallel(DecodingGramNet(n=1, distribution=transforms.identity))
+	images = torch.randn(1, 3, 224, 224).float().to(DEVICE)
 	x = model.forward(images)
 
 	x.mean().backward()

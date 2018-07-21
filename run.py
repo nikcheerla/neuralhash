@@ -62,6 +62,7 @@ def run(cmd, mode='experiment', config="default", shutdown=False, debug=False):
 		return
 		
 	shutil.copytree("output", f"jobs/{run_name}/output")
+	for file in glob.glob("*.py"): shutil.copy(file, f"jobs/{run_name}")
 
 	yaml.safe_dump(run_log, open("jobs/runlog.yml", 'w'), \
 			allow_unicode=True, default_flow_style=False)

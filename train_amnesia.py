@@ -26,8 +26,7 @@ import IPython
 from testing import test_transforms
 
 
-DATA_PATH = 'data/amnesia'
-logger = Logger("train", ("loss", "bits"), print_every=5, plot_every=20)
+logger = Logger("train", ("loss", "bits"), print_every=10, plot_every=40)
 
 def loss_func(model, x, targets):
 	scores = model.forward(x)
@@ -37,12 +36,12 @@ def loss_func(model, x, targets):
 	return F.binary_cross_entropy(scores, score_targets), \
 		predictions.cpu().data.numpy().round(2)
 
-def init_data(input_path, output_path, n=None):
+def init_data(output_path, n=None):
 	
-	shutil.rmtree(DATA_PATH)
-	os.makedirs(DATA_PATH)
+	shutil.rmtree(output_path)
+	os.makedirs(output_path)
 
-	image_files = glob.glob(f'{input_path}/*.jpg')
+	image_files = TRAIN_FILES
 	if n is not None: image_files = image_files[0:n]
 
 	for k, files in tqdm.tqdm(list(enumerate(
@@ -60,7 +59,7 @@ if __name__ == "__main__":
 	# params = itertools.chain(model.module.classifier.parameters(), 
 	# 						model.module.features[-1].parameters())
 	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=2.5e-3)
-	init_data('data/colornet', DATA_PATH)
+	init_data("data/amnesia")
 
 	logger.add_hook(lambda: 
 		[print (f"Saving model to {OUTPUT_DIR}train_test.pth"),
@@ -68,8 +67,8 @@ if __name__ == "__main__":
 		freq=40,
 	)
 
-	files = glob.glob(f"{DATA_PATH}/*.pth")
-	for i, save_file in enumerate(random.choice(files) for i in range(0, 1000)):
+	files = glob.glob(f"data/amnesia/*.pth")
+	for i, save_file in enumerate(random.choice(files) for i in range(0, 1200)):
 
 		perturbation, images, targets = torch.load(save_file)
 		perturbation.requires_grad = True
@@ -89,5 +88,6 @@ if __name__ == "__main__":
 		logger.step ("bits", error)
 
 		if i != 0 and i % 100 == 0:
-			test_transforms(model, name=f'iter{i}')
+			test_transforms(model, random.sample(TRAIN_FILES, 16), name=f'{i}iter_train')
+			test_transforms(model, VAL_FILES, name=f'{i}iter_test')
 
