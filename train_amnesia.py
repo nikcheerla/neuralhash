@@ -17,7 +17,7 @@ from torch.autograd import Variable
 from utils import *
 import transforms
 from encoding import encode_binary
-from models import DecodingNet
+from models import DecodingNet, DecodingGramNet
 from logger import Logger
 
 from skimage.morphology import binary_dilation
@@ -55,9 +55,9 @@ def init_data(output_path, n=None):
 
 if __name__ == "__main__":	
 
-	model = nn.DataParallel(DecodingNet(n=DIST_SIZE, distribution=transforms.encoding))
-	# params = itertools.chain(model.module.classifier.parameters(), 
-	# 						model.module.features[-1].parameters())
+	model = nn.DataParallel(DecodingGramNet(n=DIST_SIZE, distribution=transforms.encoding))
+	# params = itertools.chain(model.module.gram_classifiers.parameters(), 
+	# 						model.module.classifier.parameters())
 	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=2.5e-3)
 	init_data("data/amnesia")
 
@@ -87,7 +87,7 @@ if __name__ == "__main__":
 		error = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
 		logger.step ("bits", error)
 
-		if i != 0 and i % 100 == 0:
-			test_transforms(model, random.sample(TRAIN_FILES, 16), name=f'{i}iter_train')
-			test_transforms(model, VAL_FILES, name=f'{i}iter_test')
+		if i != 0 and i % 300 == 0:
+			test_transforms(model, random.sample(TRAIN_FILES, 16), name=f'iter{i}_train')
+			test_transforms(model, VAL_FILES, name=f'iter{i}_test')
 

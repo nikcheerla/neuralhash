@@ -29,7 +29,7 @@ class Optimizer(nn.Module):
 
 class Adam(Optimizer):
 
-	def __init__(self, parameters, lr=1e-3, betas=(0.9, 0.999), eps=1e-8):
+	def __init__(self, parameters, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, differentiable=False):
 		
 		super().__init__(parameters)
 
@@ -37,6 +37,7 @@ class Adam(Optimizer):
 		self.betas = betas
 		self.eps = eps
 		self.state = {param:{} for param in parameters}
+		self.differentiable = differentiable
 
 	def forward(self, grad, param=None):
 
@@ -58,6 +59,9 @@ class Adam(Optimizer):
 
 		state['exp_avg'] = exp_avg.detach().data
 		state['exp_avg_sq'] = exp_avg_sq.detach().data
+		
+		if not self.differentiable:
+			update = update.data
 
 		return update
 

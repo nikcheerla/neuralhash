@@ -113,6 +113,13 @@ def training(x):
 def encoding(x):
     return training(x)
 
+def inference(x):
+    x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
+    x = random.choice([gauss, noise, color_jitter, lambda x: x])(x)
+    x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
+    x = identity(x)
+    return x
+
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt

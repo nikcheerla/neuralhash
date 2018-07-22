@@ -15,7 +15,7 @@ import random
 # CRITICAL HYPER PARAMS
 EPSILON = 9e-3
 BATCH_SIZE = 64
-DIST_SIZE = 40
+DIST_SIZE = 48
 ENCODING_DIST_SIZE = 96
 TARGET_SIZE = 32
 VAL_SIZE = 8
@@ -26,7 +26,7 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 IMAGE_MAX = 255.0
 OUTPUT_DIR = "output/"
 DATA_FILES = sorted(glob.glob("data/colornet/*.jpg"))
-TRAIN_FILES, VAL_FILES = DATA_FILES[:-16], DATA_FILES[-16:]
+TRAIN_FILES, VAL_FILES = DATA_FILES[:-VAL_SIZE], DATA_FILES[-VAL_SIZE:]
 dtype = torch.cuda.FloatTensor if USE_CUDA else torch.FloatTensor
 
 

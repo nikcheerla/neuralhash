@@ -17,7 +17,7 @@ from utils import *
 import transforms
 
 from encoding import encode_binary
-from models import DecodingNet
+from models import DecodingNet, DecodingGramNet
 from logger import Logger
 
 import IPython
@@ -61,13 +61,9 @@ def sweep(images, targets, model, transform, \
 
 def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=200):
 
-    if model is None:
-        model = nn.DataParallel(DecodingNet(distribution=transforms.encoding, n=64))
-
-    if type(model) is str:
-        x = nn.DataParallel(DecodingNet(distribution=transforms.encoding, n=64))
-        x.module.load(model)
-        model = x
+    if not isinstance(model, DecodingGramNet):
+        model = nn.DataParallel(DecodingGramNet.load(distribution=transforms.encoding,
+                                            n=96, weights_file=model))
 
     images = [im.load(image) for image in image_files]
     images = im.stack(images)
@@ -76,10 +72,11 @@ def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=200
 
     encoded_images = encode_binary(images, targets, model, n=96, verbose=True, max_iter=max_iter)
 
-    for img, encoded_im, filename, target in zip(images, encoded_images, image_files, targets):
-        im.save(im.numpy(img), file=f"{OUTPUT_DIR}{binary.str(target)}_original_{filename.split('/')[-1]}")
-        im.save(im.numpy(encoded_im), file=f"{OUTPUT_DIR}{binary.str(target)}_encoded_{filename.split('/')[-1]}")
+    # for img, encoded_im, filename, target in zip(images, encoded_images, image_files, targets):
+    #     im.save(im.numpy(img), file=f"{OUTPUT_DIR}_{binary.str(target)}_original_{filename.split('/')[-1]}")
+    #     im.save(im.numpy(encoded_im), file=f"{OUTPUT_DIR}_{binary.str(target)}_encoded_{filename.split('/')[-1]}")
 
+    model.module.set_distribution(transforms.identity, n=1)
     predictions = model(encoded_images).mean(dim=1).cpu().data.numpy()
     binary_loss = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
 
@@ -107,11 +104,11 @@ def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=200
     model.train()
 
 
-def evaluate(model, image, target, test_transforms=True):
-    if type(model) is str:
-        x = nn.DataParallel(DecodingNet(distribution=transforms.encoding, n=64))
-        x.module.load(model)
-        model = x
+def evaluate(model, image, target, test_transforms=False):
+    
+    if not isinstance(model, DecodingGramNet):
+        model = nn.DataParallel(DecodingGramNet.load(distribution=transforms.identity,
+                                            n=1, weights_file=model))
 
     image = im.torch(im.load(image)).unsqueeze(0)
     target = binary.parse(str(target))

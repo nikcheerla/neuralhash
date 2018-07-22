@@ -13,7 +13,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 
-from models import DecodingNet
+from models import DecodingNet, DecodingGramNet
 from torchvision import models
 from logger import Logger
 from utils import *
@@ -82,13 +82,9 @@ Command-line interface for encoding a single image
 def encode(image, out, target=binary.str(binary.random(TARGET_SIZE)), n=96,
 			model=None, max_iter=300):
 
-	if model is None:
-		model = nn.DataParallel(DecodingNet(distribution=transforms.encoding, n=n))
-
-	if type(model) is str:
-		x = nn.DataParallel(DecodingNet(distribution=transforms.encoding, n=n))
-		x.module.load(model)
-		model = x
+	if not isinstance(model, DecodingGramNet):
+		model = nn.DataParallel(DecodingGramNet.load(distribution=transforms.encoding,
+											n=n, weights_file=model))
 
 	image = im.torch(im.load(image)).unsqueeze(0)
 	print ("Target: ", target)
