@@ -1,5 +1,5 @@
 # NeuralHash: An Adversarial Steganographic Method For Robust, Imperceptible Watermarking
-TreeHacks 2018: Nikhil Cheerla, Rohan Suri, Isaac Pohl-Zaretsky, Evani Radiya-Dixit
+Building the next-gen watermark with deep learning: imperceptibly encoding images with un-erasable patterns to verify content ownership.
 
 ## What it does:
 Given an image (like Scream), Neuralhash makes small perturbations to visually encode a unique signature of the author:
@@ -8,7 +8,9 @@ Given an image (like Scream), Neuralhash makes small perturbations to visually e
 
 Which is able to be decoded even after extreme transformations (like a cellphone photo of the encoded image):
 
-<div style="text-align:center"><img src="https://github.com/nikcheerla/neuralhash/blob/214803c0b805d10b87b611316fd8818e42f90ebc/images/neuralhash-result.png" height="300"></div>
+<p align="center">
+  <img src="https://github.com/nikcheerla/neuralhash/blob/214803c0b805d10b87b611316fd8818e42f90ebc/images/neuralhash-result.png" height="300">
+</p>
 
 Our secure watermarking scheme represents significant advances in protecting content ownership and piracy prevention on the Internet.
 ## Harnessing Adversarial Examples
@@ -16,21 +18,27 @@ Our secure watermarking scheme represents significant advances in protecting con
 Our key insight is that we can use adversarial example techniques on a Decoder Network (that maps input images to 32-bit signatures) to generate perturbations that decode to the desired signature. We perform projected gradient descent under the Expectation over Transformation framework to do this as follows:
 <img width="900" src="https://user-images.githubusercontent.com/10892180/43042615-c0189c40-8d37-11e8-8ff5-e71d3e33b3ef.png">
 We simulate an attack distrubtion using a set of differentiable transformations over which we train over. Here are some sample transforms:
-<div style="text-align:center"><img src="https://user-images.githubusercontent.com/10892180/43042616-d490cf8a-8d37-11e8-876d-c2e2382600ab.png" width="400"></div>
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/10892180/43042616-d490cf8a-8d37-11e8-876d-c2e2382600ab.png" width="400">
+</p>
 
 ## Training the Network
 We also propose a method to train our decoder network under the Expectation-Maximization (EM) framework to learn feature transformations that are more resilient to the threat space of attacks. As shown below, we alternate between encoding images using the network and then updating the network's weights to be more robust to attacks.
-<div style="text-align:center"><img src="https://user-images.githubusercontent.com/10892180/43042623-ef164dc6-8d37-11e8-86be-f54780e7f9df.png" width="400"></div>
+<p align="center">
+<img src="https://user-images.githubusercontent.com/10892180/43042623-ef164dc6-8d37-11e8-86be-f54780e7f9df.png" width="400">
+</p>
 
 The below plots show robustness of our encoded images during the training process. As you can see, over many iterations, the line becomes flatter, indicating robustness over rotation and scaling. Shown later, our approach generalizes to more extreme transformations.
-
+<p align="center">
 <img src="https://user-images.githubusercontent.com/10892180/43042617-de13f64a-8d37-11e8-9ed0-91673390f20d.png" width="300"> <img src="https://user-images.githubusercontent.com/10892180/43042618-df3f1e1e-8d37-11e8-8532-ba1437674b45.png" width="300">
+</p>
 
-## Examples
+## Sample Encodings
 Here are some sample original images (top row) and the corresponding watermarked image (bottom row):
 
 <img src="https://user-images.githubusercontent.com/10892180/43042620-e5f128ec-8d37-11e8-8c30-a88812614c01.png" width="1100">
 
+## Example Attacks
 Some examples where our approach succeessfully decodes the correct signature and examples where it fails:
 
 <img src="https://user-images.githubusercontent.com/10892180/43042624-f389c4d2-8d37-11e8-9820-c62c0363ba4b.png" width="1100">
