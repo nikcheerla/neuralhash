@@ -1,27 +1,27 @@
-# NeuralHash
+# NeuralHash: An Adversarial Steganographic Method For Robust, Imperceptible Watermarking
 TreeHacks 2018: Nikhil Cheerla, Rohan Suri, Isaac Pohl-Zaretsky, Evani Radiya-Dixit
 
 ## What it does:
 Given an image (like Scream):
 
-<img src="https://raw.githubusercontent.com/nikcheerla/neuralhash/master/images/Scream.jpg" height="400">
+<img src="https://raw.githubusercontent.com/nikcheerla/neuralhash/treehacks-demo/images/Scream.jpg" height="400">
 
 Neuralhash makes small perturbations to visually encode data (in this case, a facebook ID):
 
-<img src="https://raw.githubusercontent.com/nikcheerla/neuralhash/master/images/Scream%20Encoded.jpeg" height="400">
+<img src="https://raw.githubusercontent.com/nikcheerla/neuralhash/treehacks-demo/images/Scream%20Encoded.jpeg" height="400">
 
 Which is able to be decoded even after extreme transformations (like a cellphone photo of the encoded image):
 
-<img src="https://raw.githubusercontent.com/nikcheerla/neuralhash/master/images/neuralhash-result.png" height="400">
+<img src="https://raw.githubusercontent.com/nikcheerla/neuralhash/treehacks-demo/images/neuralhash-result.png" height="400">
 
 
 ## Description:
 
-Deep neural networks such as VGG16 and ResNet101 have been used to achieve state-of-the-art results in image classification. We combine these pretrained deep neural networks — whose parameters were expertly honed to detect salient shapes and features — along with stochastic connections and layers to develop a “decoder” model. This decoder acts as a robust, cryptographically-secure, transformation-invariant hash function for images, mapping input images to 32-bit codes.
+The development of a secure watermarking scheme is an important problem that has applications in content owner- ship and piracy prevention. Current state-of-the-art techniques are unable to document robustness across a vari- ety of affine transformations. We propose a method that harnesses the expressiveness of deep neural networks to covertly embed imperceptible, transformation-resilient binary signatures into images. Given a decoder network, our key insight is that adversarial example generation techniques can be used to encode images by performing pro- jected gradient descent on the image to embed a chosen signature.
 
 By performing projective gradient descent on the decoder model with respect to a given image, we can use it to “sign” images robustly (think of a more advanced watermark). We start with the original image, then repeatedly tweak the pixel values such that the image (and all transformations, including scaling, rotation, adding noise, blurring, random cropping, and more) decodes to a specified 32-bit code. The resultant image will be almost imperceptible from the original image, yet contain an easily-decodable signature that cannot be removed even by the most dedicated of adversaries.
 
-We apply this to the problem of giving creators a unique way to provide proof-of-authenticity for their work. In the website we developed, we enable users to embed Facebook profile IDs in images, and decode images to find the Facebook IDs of the people who authored them.
+We also propose a method to train our decoder network under the Expectation-Maximization (EM) framework to learn feature transformations that are more resilient to the threat space of attacks. Experimental results indicate that our model achieves robustness across different transformations such as scaling and rotating, with improved results over the length of EM training. Furthermore, we show an inherent trade-off between robustness and imperceptibility, which allows the user of the model flexibility in adjusting parameters to fit a particular task.
 
 ## Problem Formulation
 
