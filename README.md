@@ -16,7 +16,9 @@ Our secure watermarking scheme represents significant advances in protecting con
 ## Harnessing Adversarial Examples
 
 Our key insight is that we can use adversarial example techniques on a Decoder Network (that maps input images to 32-bit signatures) to generate perturbations that decode to the desired signature. We perform projected gradient descent under the Expectation over Transformation framework to do this as follows:
-<img width="900" src="https://user-images.githubusercontent.com/10892180/43042615-c0189c40-8d37-11e8-8ff5-e71d3e33b3ef.png">
+<p align="center">
+  <img width="700" src="https://user-images.githubusercontent.com/10892180/43042615-c0189c40-8d37-11e8-8ff5-e71d3e33b3ef.png">
+</p>
 We simulate an attack distrubtion using a set of differentiable transformations over which we train over. Here are some sample transforms:
 <p align="center">
   <img src="https://user-images.githubusercontent.com/10892180/43042616-d490cf8a-8d37-11e8-876d-c2e2382600ab.png" width="400">
