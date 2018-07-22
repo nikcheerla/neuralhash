@@ -16,7 +16,7 @@ from torch.autograd import Variable
 
 from utils import *
 import transforms
-from modules import UNet
+from models import UNet
 from logger import Logger
 
 from sklearn.metrics import roc_auc_score
@@ -35,17 +35,16 @@ def data_gen(files, batch_size=64):
 	while True:
 		enc_files = random.sample(files, batch_size)
 		orig_files = [f.replace('encoded', 'original') for f in enc_files]
-		print(enc_files)
 		encoded_ims = [im.load(image) for image in enc_files]
 		original_ims = [im.load(image) for image in orig_files]
 		encoded, original = im.stack(encoded_ims), im.stack(original_ims)
 
-		yield encoded, (encoded-original)
+		yield original, (encoded-original)
 
 def viz_preds(model, x, y):
 	preds = model(x)
 	for i, (pred, truth, enc) in enumerate(zip(preds, y, x)):
-		im.save(im.numpy(enc), f'{OUTPUT_DIR}{i}_encoded.jpg')
+		im.save(im.numpy(enc+truth), f'{OUTPUT_DIR}{i}_encoded.jpg')
 		im.save(3*np.abs(im.numpy(pred)), f'{OUTPUT_DIR}{i}_pred.jpg')
 		im.save(3*np.abs(im.numpy(truth)), f'{OUTPUT_DIR}{i}_truth.jpg')
 
@@ -54,10 +53,10 @@ if __name__ == "__main__":
 	model = nn.DataParallel(UNet())
 	model.train()
 
-	optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+	optimizer = torch.optim.Adam(model.parameters(), lr=3e-3)
 
 	# optimizer.load_state_dict('output/unet_opt.pth')	
-	model.module.load('jobs/experiment_unet/output/train_unet.pth')
+	model.module.load('output/train_unet.pth')
 
 	logger.add_hook(lambda: 
 		[print (f"Saving model/opt to {OUTPUT_DIR}train_unet.pth"),
@@ -67,10 +66,10 @@ if __name__ == "__main__":
 	)
 
 	files = glob.glob(f"{DATA_PATH}/*encoded*.jpg")
-	train_files, val_files = files[:-128], files[-128:]
-	x_val, y_val = next(data_gen(val_files, 128))
+	train_files, val_files = files[:-142], files[-142:]
+	x_val, y_val = next(data_gen(val_files, 142))
 
-	for i, (x, y) in enumerate(data_gen(train_files, 128)):
+	for i, (x, y) in enumerate(data_gen(train_files, 142)):
 		loss, corr = loss_func(model, x, y)
 
 		logger.step ("loss", min(5000, loss))
@@ -80,9 +79,10 @@ if __name__ == "__main__":
 		loss.backward()
 		optimizer.step()
 
-		if i % 20 == 0:
+		if i % 50 == 0:
 			model.eval()
 			val_loss = loss_func(model, x_val, y_val)
+			viz_preds(model, x_val[:8], y_val[:8])
 			model.train()
 			print(f'val_loss = {val_loss}')
 

@@ -120,6 +120,14 @@ def inference(x):
     x = identity(x)
     return x
 
+def easy(x):
+    x = resize_rect(x)
+    x = rotate(scale(x, 0.6, 1.4), max_angle=30)
+    x = gauss(x, min_sigma=0.8, max_sigma=1.2)
+    x = translate(x)
+    x = identity(x)
+    return x
+
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt

@@ -28,7 +28,7 @@ Encodes a set of images with the specified binary targets, for a given number of
 def encode_binary(images, targets, model=DecodingNet(), n=None,
 					max_iter=200, verbose=False, perturbation=None):
 
-	logger = Logger("encoding", ("loss", "bits"), verbose=verbose, print_every=20, plot_every=40)
+	logger = Logger("encoding", ("loss", "bits"), verbose=verbose, print_every=5, plot_every=40)
 	
 	if n is not None: 
 		if verbose: print (f"Changing distribution size: {model.module.n} -> {n}")
@@ -41,13 +41,13 @@ def encode_binary(images, targets, model=DecodingNet(), n=None,
 
 		return F.binary_cross_entropy(scores, score_targets), \
 			predictions.cpu().data.numpy().round(2)
-	
+
 	returnPerturbation = True
 	if not isinstance(perturbation, torch.Tensor):
 		perturbation = nn.Parameter(0.03*torch.randn(images.size()).to(DEVICE)+0.0)
 		returnPerturbation = False
 
-	opt = torch.optim.Adam([perturbation], lr=5e-1)
+	opt = torch.optim.Adam([perturbation], lr=1e-3)
 	changed_images = images.detach()
 
 	for i in range(0, max_iter+1):
@@ -59,6 +59,7 @@ def encode_binary(images, targets, model=DecodingNet(), n=None,
 		changed_images = (images + perturbation_zc).clamp(min=0.0, max=1.0)
 
 		loss, predictions = loss_func(model, changed_images)
+
 		loss.backward()
 		opt.step(); opt.zero_grad()
 
@@ -85,7 +86,6 @@ def encode(image, out, target=binary.str(binary.random(TARGET_SIZE)), n=96,
 	if not isinstance(model, DecodingGramNet):
 		model = nn.DataParallel(DecodingGramNet.load(distribution=transforms.encoding,
 											n=n, weights_file=model))
-
 	image = im.torch(im.load(image)).unsqueeze(0)
 	print ("Target: ", target)
 	target = binary.parse(str(target))

@@ -59,7 +59,7 @@ def sweep(images, targets, model, transform, \
     plt.cla(); plt.clf(); plt.close()
 
 
-def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=200):
+def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=300):
 
     if not isinstance(model, DecodingGramNet):
         model = nn.DataParallel(DecodingGramNet.load(distribution=transforms.encoding,
