@@ -16,7 +16,6 @@ from torch.autograd import Variable
 
 from utils import *
 import transforms
-from encoding import encode_binary
 from models import UNet
 from logger import Logger
 
@@ -36,14 +35,19 @@ def data_gen(files, batch_size=64):
 	while True:
 		enc_files = random.sample(files, batch_size)
 		orig_files = [f.replace('encoded', 'original') for f in enc_files]
-
+		print(enc_files)
 		encoded_ims = [im.load(image) for image in enc_files]
 		original_ims = [im.load(image) for image in orig_files]
 		encoded, original = im.stack(encoded_ims), im.stack(original_ims)
+
 		yield encoded, (encoded-original)
 
-def viz_preds(model, files, batch_size=32):
-
+def viz_preds(model, x, y):
+	preds = model(x)
+	for i, (pred, truth, enc) in enumerate(zip(preds, y, x)):
+		im.save(im.numpy(enc), f'{OUTPUT_DIR}{i}_encoded.jpg')
+		im.save(3*np.abs(im.numpy(pred)), f'{OUTPUT_DIR}{i}_pred.jpg')
+		im.save(3*np.abs(im.numpy(truth)), f'{OUTPUT_DIR}{i}_truth.jpg')
 
 if __name__ == "__main__":
 
@@ -54,9 +58,6 @@ if __name__ == "__main__":
 
 	# optimizer.load_state_dict('output/unet_opt.pth')	
 	model.module.load('jobs/experiment_unet/output/train_unet.pth')
-
-	#### TEMP VIZ #####
-	viz_preds(model, files, batch_size)
 
 	logger.add_hook(lambda: 
 		[print (f"Saving model/opt to {OUTPUT_DIR}train_unet.pth"),
@@ -80,7 +81,9 @@ if __name__ == "__main__":
 		optimizer.step()
 
 		if i % 20 == 0:
+			model.eval()
 			val_loss = loss_func(model, x_val, y_val)
+			model.train()
 			print(f'val_loss = {val_loss}')
 
 		if i == 2000: break
