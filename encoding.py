@@ -47,7 +47,7 @@ def encode_binary(images, targets, model=DecodingNet(), n=None,
 		perturbation = nn.Parameter(0.03*torch.randn(images.size()).to(DEVICE)+0.0)
 		returnPerturbation = False
 
-	opt = torch.optim.Adam([perturbation], lr=1e-3)
+	opt = torch.optim.Adam([perturbation], lr=ENCODING_LR)
 	changed_images = images.detach()
 
 	for i in range(0, max_iter+1):

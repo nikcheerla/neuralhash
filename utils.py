@@ -18,8 +18,9 @@ BATCH_SIZE = 64
 DIST_SIZE = 48
 ENCODING_DIST_SIZE = 96
 TARGET_SIZE = 32
-VAL_SIZE = 8
+VAL_SIZE = 16
 P_RESET = 0.03 # prob that a encoded image is reset
+ENCODING_LR = 1e-2
 
 USE_CUDA = torch.cuda.is_available()
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

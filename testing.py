@@ -61,22 +61,22 @@ def sweep(images, targets, model, transform, \
 
 def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=300):
 
-    if not isinstance(model, DecodingGramNet):
-        model = nn.DataParallel(DecodingGramNet.load(distribution=transforms.encoding,
-                                            n=96, weights_file=model))
+    # if not isinstance(model, DecodingGramNet):
+    #     model = nn.DataParallel(DecodingGramNet.load(distribution=transforms.encoding,
+    #                                         n=96, weights_file=model))
 
     images = [im.load(image) for image in image_files]
     images = im.stack(images)
     targets = [binary.random(n=TARGET_SIZE) for _ in range(0, len(images))]
     model.eval()
 
-    encoded_images = encode_binary(images, targets, model, n=96, verbose=True, max_iter=max_iter)
+    encoded_images = encode_binary(images, targets, model, n=ENCODING_DIST_SIZE, verbose=True, max_iter=max_iter)
 
     # for img, encoded_im, filename, target in zip(images, encoded_images, image_files, targets):
     #     im.save(im.numpy(img), file=f"{OUTPUT_DIR}_{binary.str(target)}_original_{filename.split('/')[-1]}")
     #     im.save(im.numpy(encoded_im), file=f"{OUTPUT_DIR}_{binary.str(target)}_encoded_{filename.split('/')[-1]}")
 
-    model.module.set_distribution(transforms.identity, n=1)
+    # model.module.set_distribution(transforms.identity, n=1)
     predictions = model(encoded_images).mean(dim=1).cpu().data.numpy()
     binary_loss = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
 
