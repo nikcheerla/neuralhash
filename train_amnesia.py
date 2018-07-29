@@ -56,7 +56,7 @@ def init_data(output_path, n=None):
 
 if __name__ == "__main__":	
 
-	model = nn.DataParallel(DecodingGramNet(n=DIST_SIZE, distribution=transforms.easy))
+	model = nn.DataParallel(DecodingGramNet(n=DIST_SIZE, distribution=transforms.training))
 	# params = itertools.chain(model.module.gram_classifiers.parameters(), 
 	# 						model.module.classifier.parameters())
 	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=2.5e-3)

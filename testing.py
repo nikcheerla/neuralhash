@@ -76,7 +76,7 @@ def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=300
     #     im.save(im.numpy(img), file=f"{OUTPUT_DIR}_{binary.str(target)}_original_{filename.split('/')[-1]}")
     #     im.save(im.numpy(encoded_im), file=f"{OUTPUT_DIR}_{binary.str(target)}_encoded_{filename.split('/')[-1]}")
 
-    # model.module.set_distribution(transforms.identity, n=1)
+    model.module.set_distribution(transforms.identity, n=1)
     predictions = model(encoded_images).mean(dim=1).cpu().data.numpy()
     binary_loss = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
 
@@ -101,6 +101,8 @@ def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=300
             transform=lambda x, val: transforms.noise(x, intensity=val),
             name=name, transform_name="noise",
             min_val=0.0, max_val=0.1, samples=15)
+    
+    model.module.set_distribution(transforms.training, n=ENCODING_DIST_SIZE)
     model.train()
 
 
