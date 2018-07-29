@@ -51,7 +51,8 @@ def init_data(output_path, n=None):
 		images = im.stack([im.load(img_file) for img_file in files]).detach()
 		perturbation = nn.Parameter(0.03*torch.randn(images.size()).to(DEVICE)+0.0)
 		targets = [binary.random(n=TARGET_SIZE) for i in range(len(images))]
-		torch.save((perturbation.data, images.data, targets), f'{output_path}/{k}.pth')
+		optimizer = torch.optim.Adam([perturbation], lr=ENCODING_LR)
+		torch.save((perturbation.data, images.data, targets, optimizer.state_dict()), f'{output_path}/{k}.pth')
 
 if __name__ == "__main__":	
 
@@ -59,7 +60,7 @@ if __name__ == "__main__":
 	# params = itertools.chain(model.module.gram_classifiers.parameters(), 
 	# 						model.module.classifier.parameters())
 	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=2.5e-3)
-	init_data("data/amnesia")
+	#init_data("data/amnesia")
 
 	logger.add_hook(lambda: 
 		[print (f"Saving model to {OUTPUT_DIR}train_test.pth"),
@@ -70,10 +71,14 @@ if __name__ == "__main__":
 	files = glob.glob(f"data/amnesia/*.pth")
 	for i, save_file in enumerate(random.choice(files) for i in range(0, 800)):
 
-		perturbation, images, targets = torch.load(save_file)
+		perturbation, images, targets, optimizer_state = torch.load(save_file)
+		perturbation = perturbation.requires_grad_()
+		pert_optimizer = torch.optim.Adam([perturbation], lr=ENCODING_LR)
+		pert_optimizer.load_state_dict(optimizer_state)
+
 		perturbation.requires_grad = True
-		encoded_ims, perturbation = encode_binary(images, targets, \
-			model, verbose=False, max_iter=1, perturbation=perturbation)
+		encoded_ims, perturbation, pert_optimizer = encode_binary(images, targets, \
+			model, verbose=False, max_iter=1, perturbation=perturbation, optimizer=pert_optimizer)
 
 		loss, predictions = loss_func(model, encoded_ims, targets)
 		logger.step ("loss", loss)
@@ -82,12 +87,12 @@ if __name__ == "__main__":
 		loss.backward()
 		optimizer.step()
 
-		torch.save((perturbation.data, images.data, targets), save_file)
+		torch.save((perturbation.data, images.data, targets, pert_optimizer.state_dict()), save_file)
 
 		error = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
 		logger.step ("bits", error)
 
-		if i != 0 and i % 100 == 0:
-			test_transforms(model, random.sample(TRAIN_FILES, 16), name=f'iter{i}_train')
+		if i != 0 and i % 300 == 0:
+			#test_transforms(model, random.sample(TRAIN_FILES, 16), name=f'iter{i}_train')
 			test_transforms(model, VAL_FILES, name=f'iter{i}_test')
 

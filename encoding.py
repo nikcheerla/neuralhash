@@ -26,7 +26,7 @@ import transforms
 Encodes a set of images with the specified binary targets, for a given number of iterations.
 """
 def encode_binary(images, targets, model=DecodingNet(), n=None,
-					max_iter=200, verbose=False, perturbation=None):
+					max_iter=200, verbose=False, perturbation=None, optimizer=None):
 
 	logger = Logger("encoding", ("loss", "bits"), verbose=verbose, print_every=5, plot_every=40)
 	
@@ -45,9 +45,9 @@ def encode_binary(images, targets, model=DecodingNet(), n=None,
 	returnPerturbation = True
 	if not isinstance(perturbation, torch.Tensor):
 		perturbation = nn.Parameter(0.03*torch.randn(images.size()).to(DEVICE)+0.0)
+		optimizer = torch.optim.Adam([perturbation], lr=ENCODING_LR)
 		returnPerturbation = False
 
-	opt = torch.optim.Adam([perturbation], lr=ENCODING_LR)
 	changed_images = images.detach()
 
 	for i in range(0, max_iter+1):
@@ -61,7 +61,7 @@ def encode_binary(images, targets, model=DecodingNet(), n=None,
 		loss, predictions = loss_func(model, changed_images)
 
 		loss.backward()
-		opt.step(); opt.zero_grad()
+		optimizer.step(); optimizer.zero_grad()
 
 		error = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
 		logger.step('loss', loss)
@@ -71,8 +71,14 @@ def encode_binary(images, targets, model=DecodingNet(), n=None,
 		if verbose: print (f"Fixing distribution size: {model.module.n} -> {n}")
 		n, model.module.n = (model.module.n, n)
 
+	perturbation_zc = perturbation/perturbation.view(perturbation.shape[0], -1)\
+			.norm(2, dim=1, keepdim=True).unsqueeze(2).unsqueeze(2).expand_as(perturbation)\
+			*EPSILON*(perturbation[0].nelement()**0.5)
+
+	changed_images = (images + perturbation_zc).clamp(min=0.0, max=1.0)
+
 	if returnPerturbation:
-		return changed_images.detach(), perturbation.detach()
+		return changed_images.detach(), perturbation.detach(), optimizer
 
 	return changed_images.detach()
 
