@@ -50,7 +50,7 @@ def encode_binary(images, targets, model=DecodingNet(), n=None,
 
 	changed_images = images.detach()
 
-	for i in range(0, max_iter+1):
+	for i in range(0, max_iter):
 
 		perturbation_zc = perturbation/perturbation.view(perturbation.shape[0], -1)\
 			.norm(2, dim=1, keepdim=True).unsqueeze(2).unsqueeze(2).expand_as(perturbation)\
