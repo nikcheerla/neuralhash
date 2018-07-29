@@ -102,7 +102,7 @@ def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=300
             name=name, transform_name="noise",
             min_val=0.0, max_val=0.1, samples=15)
     
-    model.module.set_distribution(transforms.training, n=ENCODING_DIST_SIZE)
+    model.module.set_distribution(transforms.training, n=DIST_SIZE)
     model.train()
 
 
