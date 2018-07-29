@@ -34,6 +34,9 @@ class DecodingNet(nn.Module):
 		self.distribution, self.n = distribution, n
 		self.to(DEVICE)
 
+	def set_distribution(self, distribution):
+		self.distribution = distribution
+
 	def forward(self, x):
 
 		x = torch.cat([self.distribution(x).unsqueeze(1) \
@@ -260,7 +263,7 @@ class UNet(torch.nn.Module):
 		x = self.up_block5(self.x1, x)
 		x = self.relu(self.last_bn(self.last_conv1(x)))
 		x = self.last_conv2(x)
-		return x
+		return x, [self.x1, self.x2, self.x3, self.x4, self.x5]
 
 	def load(self, file_path):
 		self.load_state_dict(torch.load(file_path))
