@@ -49,6 +49,17 @@ def corrcoef(x):
 
 	return c
 
+
+def get_std_weight(images, n=5, alpha=0.5):
+	N, C, H, W = images.shape
+	kernel = kernel = torch.ones(C, 1, n, n)
+	with torch.no_grad():
+		padded = F.pad(images, (n//2, n//2, n//2, n//2), mode='replicate')
+		sums = F.conv2d(padded, kernel.to(DEVICE), groups=3, padding=0) * (1/(n**2))
+		sums_2 = F.conv2d(padded**2, kernel.to(DEVICE), groups=3, padding=0) * (1/(n**2))
+		stds = (sums_2 - (sums**2) + 1e-5)**alpha
+	return stds
+
 def gram(input):
 	N, C, H, W = input.size()
 	features = input.view(N, C, H*W)  # resise F_XL into \hat F_XL
