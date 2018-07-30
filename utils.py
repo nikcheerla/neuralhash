@@ -21,6 +21,7 @@ TARGET_SIZE = 32
 VAL_SIZE = 16
 P_RESET = 0.03 # prob that a encoded image is reset
 ENCODING_LR = 1e-1
+PERT_ALPHA = 0.5
 
 USE_CUDA = torch.cuda.is_available()
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

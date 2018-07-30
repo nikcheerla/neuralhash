@@ -26,7 +26,7 @@ import transforms
 Encodes a set of images with the specified binary targets, for a given number of iterations.
 """
 def encode_binary(images, targets, model=DecodingNet(), n=None,
-					max_iter=200, verbose=False, perturbation=None, optimizer=None):
+					max_iter=200, verbose=False, perturbation=None, use_weighting=False):
 
 	logger = Logger("encoding", ("loss", "bits"), verbose=verbose, print_every=5, plot_every=40)
 	
@@ -42,19 +42,28 @@ def encode_binary(images, targets, model=DecodingNet(), n=None,
 		return F.binary_cross_entropy(scores, score_targets), \
 			predictions.cpu().data.numpy().round(2)
 
+	def norm_bound(pert):
+		return pert/pert.view(pert.shape[0], -1)\
+			.norm(2, dim=1, keepdim=True).unsqueeze(2).unsqueeze(2).expand_as(pert)\
+			*EPSILON*(pert[0].nelement()**0.5)
+
 	returnPerturbation = True
 	if not isinstance(perturbation, torch.Tensor):
 		perturbation = nn.Parameter(0.03*torch.randn(images.size()).to(DEVICE)+0.0)
 		optimizer = torch.optim.Adam([perturbation], lr=ENCODING_LR)
 		returnPerturbation = False
 
+	optimizer = torch.optim.Adam([perturbation], lr=ENCODING_LR)
+
+	if use_weighting:
+		std_weights = get_std_weight(images, alpha=PERT_ALPHA).detach()
+	
 	changed_images = images.detach()
 
 	for i in range(0, max_iter):
 
-		perturbation_zc = perturbation/perturbation.view(perturbation.shape[0], -1)\
-			.norm(2, dim=1, keepdim=True).unsqueeze(2).unsqueeze(2).expand_as(perturbation)\
-			*EPSILON*(perturbation[0].nelement()**0.5)
+		w_pert = perturbation*std_weights if use_weighting else perturbation
+		perturbation_zc = norm_bound(w_pert)
 
 		changed_images = (images + perturbation_zc).clamp(min=0.0, max=1.0)
 
@@ -71,16 +80,15 @@ def encode_binary(images, targets, model=DecodingNet(), n=None,
 		if verbose: print (f"Fixing distribution size: {model.module.n} -> {n}")
 		n, model.module.n = (model.module.n, n)
 
-	perturbation_zc = perturbation/perturbation.view(perturbation.shape[0], -1)\
-			.norm(2, dim=1, keepdim=True).unsqueeze(2).unsqueeze(2).expand_as(perturbation)\
-			*EPSILON*(perturbation[0].nelement()**0.5)
+	w_pert = perturbation*std_weights if use_weighting else perturbation
+	perturbation_zc = norm_bound(w_pert)
 
 	changed_images = (images + perturbation_zc).clamp(min=0.0, max=1.0)
 
 	if returnPerturbation:
-		return changed_images.detach(), perturbation.detach(), optimizer
+		return changed_images.detach(), perturbation.detach()
 
-	return changed_images.detach()
+	return changed_images.detach().data
 
 
 """ 

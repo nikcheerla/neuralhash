@@ -101,12 +101,22 @@ def whiteout(x, n=6, min_scale=0.04, max_scale=0.2):
         x = mask*x + (1.0-mask)*bias
     return x
 
+def crop(x, p=0.1):
+    N, C, H, W = x.shape
+    H_c, W_c = int((H*W*p)**0.5), int((H*W*p)**0.5)
+    x_coord = int(random.uniform(0, H-H_c))
+    y_coord = int(random.uniform(0, W-W_c))
+
+    mask = torch.zeros_like(x)
+    mask[:, :, x_coord:x_coord+H_c, y_coord:y_coord+W_c] = 1.0
+    return x * mask
+
 def training(x):
     x = random.choice([gauss, noise, color_jitter, whiteout, lambda x: x, lambda x: x])(x)
     x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
-    x = random.choice([flip, whiteout, lambda x: x])(x)
+    x = random.choice([flip, crop, lambda x: x])(x)
     x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
-    x = random.choice([gauss, noise, color_jitter, whiteout, lambda x: x, lambda x: x])(x)
+    x = random.choice([gauss, noise, color_jitter, crop, lambda x: x, lambda x: x])(x)
     x = identity(x)
     return x
 
@@ -141,9 +151,8 @@ if __name__ == "__main__":
     for i in range(15):
         plt.imsave(f"output/house_test_{i}.jpg", im.numpy(training(img).squeeze()))
 
-    for transform in [identity, resize, resize_rect, color_jitter,
-                      scale, rotate, translate, gauss, noise, flip, whiteout,
-                      training, encoding]:
-
-        time = timeit.timeit(lambda: im.numpy(transform(img).squeeze()), number=40)
-        print (f"{transform.__name__}: {time:0.5f}")
+    # for transform in [identity, resize, resize_rect, color_jitter,
+    #                   scale, rotate, translate, gauss, noise, flip, whiteout,
+    #                   training, encoding]:
+    #     time = timeit.timeit(lambda: im.numpy(transform(img).squeeze()), number=40)
+    #     print (f"{transform.__name__}: {time:0.5f}")

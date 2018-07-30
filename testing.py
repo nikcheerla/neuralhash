@@ -23,7 +23,7 @@ from logger import Logger
 import IPython
 
 
-logger = Logger("bits", ("orig", "rotate", "scale", "translate", "noise"),
+logger = Logger("bits", ("orig", "rotate", "scale", "translate", "noise", "crop"),
                 print_every=1, plot_every=5)
 
 def sweep(images, targets, model, transform, \
@@ -59,33 +59,32 @@ def sweep(images, targets, model, transform, \
     plt.cla(); plt.clf(); plt.close()
 
 
-def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=300):
+def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=250):
 
-    # if not isinstance(model, DecodingGramNet):
-    #     model = nn.DataParallel(DecodingGramNet.load(distribution=transforms.encoding,
-    #                                         n=96, weights_file=model))
+    if isinstance(model, str):
+        model = nn.DataParallel(DecodingGramNet.load(distribution=transforms.encoding,
+                                            n=96, weights_file=model))
 
     images = [im.load(image) for image in image_files]
     images = im.stack(images)
     targets = [binary.random(n=TARGET_SIZE) for _ in range(0, len(images))]
     model.eval()
 
-    encoded_images = encode_binary(images, targets, model, n=ENCODING_DIST_SIZE, verbose=True, max_iter=max_iter)
+    encoded_images = encode_binary(images, targets, model, n=ENCODING_DIST_SIZE, verbose=True, max_iter=max_iter, use_weighting=False)
 
-    # for img, encoded_im, filename, target in zip(images, encoded_images, image_files, targets):
-    #     im.save(im.numpy(img), file=f"{OUTPUT_DIR}_{binary.str(target)}_original_{filename.split('/')[-1]}")
-    #     im.save(im.numpy(encoded_im), file=f"{OUTPUT_DIR}_{binary.str(target)}_encoded_{filename.split('/')[-1]}")
+    for img, encoded_im, filename, target in zip(images, encoded_images, image_files, targets):
+        im.save(im.numpy(img), file=f"{OUTPUT_DIR}_{binary.str(target)}_original_{filename.split('/')[-1]}")
+        im.save(im.numpy(encoded_im), file=f"{OUTPUT_DIR}_{binary.str(target)}_encoded_{filename.split('/')[-1]}")
 
     model.module.set_distribution(transforms.identity, n=1)
     predictions = model(encoded_images).mean(dim=1).cpu().data.numpy()
     binary_loss = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
 
     logger.step("orig", binary_loss)
-
     sweep(encoded_images, targets, model,
             transform=lambda x, val: transforms.rotate(x, rand_val=False, theta=val),
             name=name, transform_name="rotate",
-            min_val=-0.6, max_val=0.6, samples=60)
+            min_val=-0.6, max_val=0.6, samples=80)
 
     sweep(encoded_images, targets, model,
             transform=lambda x, val: transforms.scale(x, rand_val=False, scale_val=val),
@@ -95,13 +94,18 @@ def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=300
     sweep(encoded_images, targets, model,
             transform=lambda x, val: transforms.translate(x, max_val=val),
             name=name, transform_name="translate",
-            min_val=0.0, max_val=0.3, samples=10)
+            min_val=0.0, max_val=1.0, samples=50)
 
     sweep(encoded_images, targets, model,
             transform=lambda x, val: transforms.noise(x, intensity=val),
             name=name, transform_name="noise",
-            min_val=0.0, max_val=0.1, samples=15)
+            min_val=0.0, max_val=0.1, samples=30)
     
+    sweep(encoded_images, targets, model,
+        transform=lambda x, val: transforms.crop(x, p=val),
+        name=name, transform_name="crop",
+        min_val=0.1, max_val=1.0, samples=50)
+
     model.module.set_distribution(transforms.training, n=DIST_SIZE)
     model.train()
 
