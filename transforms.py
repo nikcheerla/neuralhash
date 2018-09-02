@@ -15,6 +15,10 @@ import IPython
 
 from scipy.ndimage import filters
 
+from torchvision import transforms
+from io import BytesIO
+from PIL import Image
+
 def identity(x):
     x = resize(x, rand_val=False, resize_val=224)
     return x
@@ -138,6 +142,14 @@ def easy(x):
     x = identity(x)
     return x
 
+def convertToJpeg(x):
+    x = x.squeeze()
+    x = transforms.ToPILImage()(x)
+    with BytesIO() as f:
+        x.save(f, format='JPEG')
+        f.seek(0)
+        ima_jpg = Image.open(f)
+        return transforms.ToTensor()(ima_jpg)
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
@@ -145,11 +157,15 @@ if __name__ == "__main__":
     img = im.load("images/house.png")
     img = im.torch(img).unsqueeze(0)
 
-    plt.imsave(f"output/house_orig.jpg", im.numpy(img.squeeze()))
+    # plt.imsave(f"output/house_orig.jpg", im.numpy(img.squeeze()))
     # returns an image after a series of transformations
 
-    for i in range(15):
-        plt.imsave(f"output/house_test_{i}.jpg", im.numpy(training(img).squeeze()))
+    # for i in range(15):
+    #     plt.imsave(f"output/house_test_{i}.jpg", im.numpy(training(img).squeeze()))
+
+    plt.imsave("output/house-jpeg-transform.jpg", im.numpy(convertToJpeg(img).squeeze()))
+
+    # time = timeit.timeit(lambda: im.numpy(transform(img).squeeze()), number=40)
 
     # for transform in [identity, resize, resize_rect, color_jitter,
     #                   scale, rotate, translate, gauss, noise, flip, whiteout,
