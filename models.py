@@ -22,11 +22,28 @@ class BaseModel(nn.Module):
 
 	def __init__(self, distribution=transforms.identity, n=1):
 		super(BaseModel, self).__init__()
-		self.distribution, self.n = distribution, n
+		if None not in [distribution, n]:
+			self.distribution, self.n = distribution, n
 		
 	def forward(self, x):
 		raise NotImplementedError()
 
+	@property
+	def distribution(self):
+		return self.__distribution
+
+	@distribution.setter
+	def distribution(self, x):
+		self.__distribution = x
+
+	@property
+	def n(self):
+		return self.__n
+
+	@n.setter
+	def n(self, n):
+		self.__n = n
+	
 	def set_distribution(self, distribution=transforms.identity, n=1):
 		self.distribution, self.n = distribution, n
 
@@ -39,6 +56,50 @@ class BaseModel(nn.Module):
 
 	def save(self, weights_file):
 		torch.save(self.state_dict(), weights_file)
+
+
+"""
+DataParallel wrapper for BaseModels that exposes the same methods
+(including save and distribution variables) without a .module() call.
+"""
+class DataParallelModel(BaseModel):
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(distribution=None, n=None)
+		self.parallel_apply = nn.DataParallel(*args, **kwargs)
+
+	def forward(self, x):
+		return self.parallel_apply(x)
+
+	@property
+	def distribution(self):
+		return self.parallel_apply.module.distribution
+
+	@distribution.setter
+	def distribution(self, x):
+		self.parallel_apply.module.distribution = x
+
+	@property
+	def n(self):
+		return self.parallel_apply.module.n
+
+	@n.setter
+	def n(self, n):
+		self.parallel_apply.module.n = n
+
+	@property
+	def module(self):
+		return self.parallel_apply.module
+
+	@classmethod
+	def load(cls, weights_file=None, distribution=transforms.identity, n=1):
+		model = cls(distribution=distribution, n=n)
+		if weights_file is not None:
+			model.parallel_apply.module.load_state_dict(torch.load(weights_file))
+		return model
+
+	def save(self, weights_file):
+		torch.save(self.parallel_apply.module.state_dict(), weights_file)
 
 
 """
@@ -141,6 +202,55 @@ class DecodingGramNet(BaseModel):
 		return F.softmax(x, dim=3)[:,:, :, 0].clamp(min=0, max=1)
 
 
+"""
+Tiny un-pretrained decoding network.
+"""
+class TinyDecodingNet(BaseModel):
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+
+		self.conv1 = nn.Conv2d(3, 128, (3, 3), padding=1)
+		self.conv2 = nn.Conv2d(128, 128, (3, 3), padding=1)
+		self.conv3 = nn.Conv2d(128, 128, (3, 3), padding=1)
+		self.conv4 = nn.Conv2d(128, 2*TARGET_SIZE, (3, 3), padding=1)
+		
+		self.to(DEVICE)
+
+	def forward(self, x):
+		x = torch.cat([self.distribution(x).unsqueeze(1) \
+						for i in range(0, self.n)], dim=1)
+		B, N, C, H, W = x.shape
+
+		x = torch.cat([((x[:, :, 0]-0.485)/(0.229)).unsqueeze(2),
+			((x[:, :, 1]-0.456)/(0.224)).unsqueeze(2),
+			((x[:, :, 2]-0.406)/(0.225)).unsqueeze(2)], dim=2)
+
+		x = x.view(B*N, C, H, W).contiguous()
+		# print (x.shape)
+
+		# x = F.relu(self.conv1(x))
+		# x = F.max_pool2d(x, 2)
+		# print (x.shape)
+
+		# x = F.relu(self.conv2(x))
+		# x = F.max_pool2d(x, 2)
+		# print (x.shape)
+
+		# x = F.relu(self.conv3(x))
+		# x = F.max_pool2d(x, 2)
+		# print (x.shape)
+
+		# x = F.relu(self.conv4(x))
+		# x = F.max_pool2d(x, 2)
+		# print (x.shape)
+		x = F.avg_pool2d(x, (x.shape[2], x.shape[3]))
+		x = x.view(B, N, TARGET_SIZE, 2)#.mean(dim=0) # reshape and average
+
+		return F.softmax(x, dim=3)[:,:, :, 0].clamp(min=0, max=1)
+
+
+
 """Decoding network that tries to predict on images using a dilated DCNN,
 which should theoretically be invariant to any scale of input. """
 class DilatedDecodingNet(BaseModel):
@@ -188,14 +298,15 @@ class DilatedDecodingNet(BaseModel):
 		x = self.classifier(x)
 		x = x.view(x.size(0), TARGET_SIZE, 2)#.mean(dim=0) # reshape and average
 
-		predictions = F.softmax(x, dim=2)[:,:, 0]
+		predictions = F.softmax(x, dim=2)[:, :, 0]
 
 		return predictions
 
+DecodingModel = eval(MODEL_TYPE)
 
 if __name__ == "__main__":
 
-	model = nn.DataParallel(DecodingGramNet(n=1, distribution=transforms.identity))
-	images = torch.randn(1, 3, 224, 224).float().to(DEVICE)
+	model = nn.DataParallel(TinyDecodingNet(n=16, distribution=transforms.identity))
+	images = torch.randn(4, 3, 224, 224).float().to(DEVICE)
 	x = model.forward(images)
 	print (x.shape)

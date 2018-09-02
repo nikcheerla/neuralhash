@@ -19,15 +19,16 @@ DIST_SIZE = 48
 ENCODING_DIST_SIZE = 96
 TARGET_SIZE = 32
 VAL_SIZE = 16
-P_RESET = 0.03 # prob that a encoded image is reset
 ENCODING_LR = 1e-1
 PERT_ALPHA = 0.5
+MODEL_TYPE = 'DecodingGramNet'
 
 USE_CUDA = torch.cuda.is_available()
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 IMAGE_MAX = 255.0
 OUTPUT_DIR = "output/"
 DATA_FILES = sorted(glob.glob("data/colornet/*.jpg"))
+JOB = open('jobs/jobinfo.txt').read().strip()
 TRAIN_FILES, VAL_FILES = DATA_FILES[:-VAL_SIZE], DATA_FILES[-VAL_SIZE:]
 dtype = torch.cuda.FloatTensor if USE_CUDA else torch.FloatTensor
 
@@ -50,7 +51,6 @@ def corrcoef(x):
 
 	return c
 
-
 def get_std_weight(images, n=5, alpha=0.5):
 	N, C, H, W = images.shape
 	kernel = kernel = torch.ones(C, 1, n, n)
@@ -59,7 +59,7 @@ def get_std_weight(images, n=5, alpha=0.5):
 		sums = F.conv2d(padded, kernel.to(DEVICE), groups=3, padding=0) * (1/(n**2))
 		sums_2 = F.conv2d(padded**2, kernel.to(DEVICE), groups=3, padding=0) * (1/(n**2))
 		stds = (sums_2 - (sums**2) + 1e-5)**alpha
-	return stds
+	return stds.detach()
 
 def gram(input):
 	N, C, H, W = input.size()

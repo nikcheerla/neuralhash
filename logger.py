@@ -3,59 +3,134 @@ import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-import random, sys, os, json
+import random, sys, os, json, math
 
 import torch
+from torchvision import datasets, transforms
+import visdom
 
 from utils import *
+import IPython
 
-
-class Logger(object):
+class BaseLogger(object):
     
-    def __init__(self, name, features, print_every=20, plot_every=100, verbose=True):
+    def __init__(self, name, verbose=True):
 
         self.name = name
-        self.features = features
-        self.print_every, self.plot_every = print_every, plot_every
-        self.data = {feature:[] for feature in features}
-        self.timestep = {feature:0 for feature in features}
+        self.data = {}
+        self.running_data = {}
+        self.reset_running = {}
         self.verbose = verbose
         self.hooks = []
 
-    def add_hook(self, hook, freq=40):
-        self.hooks.append((hook, freq))
+    def add_hook(self, hook, feature='epoch', freq=40):
+        self.hooks.append((hook, feature, freq))
 
-    def step(self, feature, x):
-
+    def update(self, feature, x):
         if isinstance(x, torch.Tensor):
             x = x.data.cpu().numpy().mean()
 
+        self.data[feature] = self.data.get(feature, [])
         self.data[feature].append(x)
-        self.timestep[feature] += 1
+        if feature not in self.running_data or self.reset_running.pop(feature, False):
+            self.running_data[feature] = []
+        self.running_data[feature].append(x)
 
-        min_timestep = min((t for t in self.timestep.values()))
+        for hook, hook_feature, freq in self.hooks:
+            if feature == hook_feature and len(self.data[feature]) % freq == 0:
+                hook(self.data[feature])
 
-        if min_timestep % self.print_every == 0 and feature == self.features[-1] and self.verbose:
-            print (f"({self.name}) Epoch {min_timestep}: ", end="")
-            for feature in self.features:
-                print (f"{feature}: {np.mean(self.data[feature][-self.print_every:]):0.4f}", end=", ")
-            print (f" ... {elapsed():0.2f} sec", flush=True)
+    def step(self):
+        self.text (f"({self.name}) ", end="")
+        for feature in self.running_data.keys():
+            if len(self.running_data[feature]) == 0: continue
+            val = np.mean(self.running_data[feature])
+            if float(val).is_integer(): 
+                self.text (f"{feature}: {int(val)}", end=", ")
+            else:
+                self.text (f"{feature}: {val:0.4f}", end=", ")
+            self.reset_running[feature] = True
+        self.text (f" ... {elapsed():0.2f} sec")
 
-        if min_timestep % self.plot_every == 0 and feature == self.features[-1] and self.verbose:
+    def text(self, text, end="\n"):
+        raise NotImplementedError()
 
-            for feature in self.features:
-                self.plot(np.array(self.data[feature]), \
-                    f"{OUTPUT_DIR}{self.name}_{feature}.jpg")
+    def plot(self, data, plot_name, opts={}):
+        raise NotImplementedError()
 
-        for hook, freq in self.hooks:
-            if min_timestep % freq == 0 and feature == self.features[-1] and self.verbose:
-                hook()
+    def images(self, data, image_name):
+        raise NotImplementedError()
 
-    def plot(self, data, plot_file):
 
-        np.savez_compressed(plot_file[:-4] + ".npz", data)
+
+class Logger(BaseLogger):
+
+    def __init__(self, *args, **kwargs):
+        self.results = kwargs.pop('results', 'output')
+        super().__init__(*args, **kwargs)
+
+    def text(self, text, end='\n'):
+        print (text, end=end, flush=True)
+
+    def plot(self, data, plot_name, opts={}):
+        np.savez_compressed(f"{self.results}/{plot_name}.npz", data)
         plt.plot(data)
-        plt.savefig(plot_file); 
+        plt.savefig(f"{self.results}/{plot_name}.jpg"); 
         plt.clf()
 
+
+
+class VisdomLogger(BaseLogger):
+
+    def __init__(self, *args, **kwargs):
+        self.port = kwargs.pop('port', 7000)
+        self.server = kwargs.pop('server', '35.230.67.129')
+        self.env = kwargs.pop('env', 'main')
+        print (f"Logging to environment {self.env}")
+        self.visdom = visdom.Visdom(server="http://" + self.server, port=self.port, env=self.env)
+        self.visdom.delete_env(self.env)
+        self.windows = {}
+        super().__init__(*args, **kwargs)
+
+    def text(self, text, end='\n'):
+        print (text, end=end)
+        window, old_text = self.windows.get('text', (None, ""))
+        if end == '\n': end = '<br>'
+        display = old_text + text + end
+
+        if window is not None:
+            window = self.visdom.text (display, win=window, append=False)
+        else:
+            window = self.visdom.text (display)
+
+        self.windows["text"] = window, display
+
+    def viz(self, viz_name, method, *args, **kwargs):
+        window = self.windows.get(viz_name, None)
+        if window is not None:
+            window = getattr(self.visdom, method)(*args, **kwargs, win=window)
+        else:
+            window = getattr(self.visdom, method)(*args, **kwargs, win=window)
+        self.windows[viz_name] = window
+
+    def plot(self, data, plot_name, opts={}):
+        
+        window = self.windows.get(plot_name, None)
+        opts.update({'title': plot_name})
+
+        self.viz(plot_name, 'line', np.array(data), opts=opts)
+
+    def images(self, data, image_name, opts={}, resize=64):
+
+        transform = transforms.Compose([
+                                    transforms.ToPILImage(),
+                                    transforms.Resize(resize),
+                                    transforms.ToTensor()])
+        data = torch.stack([transform(x) for x in data.cpu()])
+        data = data.data.cpu().numpy()
+
+        window = self.windows.get(image_name, None)
+
+        opts.update({'title': image_name})
+        self.viz(image_name, 'images', np.array(data), opts=opts)
 

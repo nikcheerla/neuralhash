@@ -65,9 +65,9 @@ def translate(x, max_val=0.3):
     img = F.grid_sample(x, grid, padding_mode='border')
     return img
 
-def gauss(x, min_sigma=0.3, max_sigma=2, rand_val=True, sigma=1, filter=gaussian_filter()):
-
+def gauss(x, min_sigma=0.3, max_sigma=2, rand_val=True, sigma=1):
     if rand_val: sigma = random.uniform(min_sigma, max_sigma)
+    filter = gaussian_filter(kernel_size=7, sigma=sigma)
     x = F.conv2d(x, weight=filter.to(x.device), bias=None, groups=3, padding=2)
     return x.clamp(min=1e-3, max=1)
 
@@ -123,20 +123,20 @@ def training(x):
 def encoding(x):
     return training(x)
 
-def inference(x):
-    x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
-    x = random.choice([gauss, noise, color_jitter, lambda x: x])(x)
-    x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
-    x = identity(x)
-    return x
+# def inference(x):
+#     x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
+#     x = random.choice([gauss, noise, color_jitter, lambda x: x])(x)
+#     x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
+#     x = identity(x)
+#     return x
 
-def easy(x):
-    x = resize_rect(x)
-    x = rotate(scale(x, 0.6, 1.4), max_angle=30)
-    x = gauss(x, min_sigma=0.8, max_sigma=1.2)
-    x = translate(x)
-    x = identity(x)
-    return x
+# def easy(x):
+#     x = resize_rect(x)
+#     x = rotate(scale(x, 0.6, 1.4), max_angle=30)
+#     x = gauss(x, min_sigma=0.8, max_sigma=1.2)
+#     x = translate(x)
+#     x = identity(x)
+#     return x
 
 
 if __name__ == "__main__":
@@ -151,8 +151,8 @@ if __name__ == "__main__":
     for i in range(15):
         plt.imsave(f"output/house_test_{i}.jpg", im.numpy(training(img).squeeze()))
 
-    # for transform in [identity, resize, resize_rect, color_jitter,
-    #                   scale, rotate, translate, gauss, noise, flip, whiteout,
-    #                   training, encoding]:
-    #     time = timeit.timeit(lambda: im.numpy(transform(img).squeeze()), number=40)
-    #     print (f"{transform.__name__}: {time:0.5f}")
+    for transform in [identity, resize, resize_rect, color_jitter, crop,
+                      scale, rotate, translate, gauss, noise, flip, whiteout,
+                      training, encoding]:
+        time = timeit.timeit(lambda: im.numpy(transform(img).squeeze()), number=40)
+        print (f"{transform.__name__}: {time:0.5f}")
