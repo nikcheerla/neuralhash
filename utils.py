@@ -129,7 +129,7 @@ def gaussian_filter(kernel_size=5, sigma=1.0):
 	                      (2*variance)
 	                  )
 	# Make sure sum of values in gaussian kernel equals 1.
-	gaussian_kernel = gaussian_kernel.to(DEVICE) / torch.sum(gaussian_kernel)
+	gaussian_kernel = gaussian_kernel.to(DEVICE) / torch.sum(gaussian_kernel).to(DEVICE)
 
 	# Reshape to 2d depthwise convolutional weight
 	gaussian_kernel = gaussian_kernel.view(1, 1, kernel_size, kernel_size)

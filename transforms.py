@@ -15,7 +15,7 @@ import IPython
 
 from scipy.ndimage import filters
 
-from torchvision import transforms
+import torchvision
 from io import BytesIO
 from PIL import Image
 
@@ -38,7 +38,7 @@ def resize_rect(x, x_val_range=0.3, y_val_range=0.3, rand_val=True, ratio=0.8):
         x_scale = random.uniform(1-x_val_range, 1+x_val_range)
         y_scale = random.uniform(1-y_val_range, 1+y_val_range)
     else:
-        x_scale = random.uniform(1 - ratio) + 1
+        x_scale = random.uniform(0, 1 - ratio) + 1
         y_scale = x_scale / ratio
 
     grid = F.affine_grid(affine(x), size=x.size())
@@ -163,14 +163,18 @@ def easy(x):
     x = identity(x)
     return x
 
-def convertToJpeg(x):
-    x = x.squeeze()
-    x = transforms.ToPILImage()(x)
-    with BytesIO() as f:
-        x.save(f, format='JPEG')
-        f.seek(0)
-        ima_jpg = Image.open(f)
-        return transforms.ToTensor()(ima_jpg)
+### NOT differentiable ###
+def convertToJpeg(x, q=10):
+    jpgs = []
+    for img in x:
+        img = img.squeeze()
+        img = torchvision.transforms.ToPILImage()(img.cpu())
+        with BytesIO() as f:
+            img.save(f, format='JPEG', quality=int(q))
+            f.seek(0)
+            ima_jpg = Image.open(f)
+            jpgs.append(torchvision.transforms.ToTensor()(ima_jpg))
+    return torch.stack(jpgs).to(DEVICE)
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt

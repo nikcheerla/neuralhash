@@ -23,8 +23,8 @@ from logger import Logger
 import IPython
 
 
-logger = Logger("bits", ("orig", "rotate", "scale", "translate", "noise", "crop"),
-                print_every=1, plot_every=5)
+logger = Logger("bits", ("orig", "rotate", "scale", "translate", "noise", "crop", "gauss", \
+                "whiteout", "resize_rect", "jitter", "jpg"), print_every=1, plot_every=5)
 
 def sweep(images, targets, model, transform, \
             name, transform_name, 
@@ -59,7 +59,7 @@ def sweep(images, targets, model, transform, \
     plt.cla(); plt.clf(); plt.close()
 
 
-def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=250):
+def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=200):
 
     if isinstance(model, str):
         model = nn.DataParallel(DecodingGramNet.load(distribution=transforms.encoding,
@@ -92,7 +92,7 @@ def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=250
             min_val=0.6, max_val=1.4, samples=50) 
 
     sweep(encoded_images, targets, model,
-            transform=lambda x, val: transforms.translate(x, max_val=val),
+            transform=lambda x, val: transforms.translate(x, rand_val=False, radius=val),
             name=name, transform_name="translate",
             min_val=0.0, max_val=1.0, samples=50)
 
@@ -107,14 +107,14 @@ def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=250
         min_val=0.1, max_val=1.0, samples=50)
     
     sweep(encoded_images, targets, model,
-        transform=lambda x, val: transforms.gauss(x, sigma=val, rand_val=False),
+        transform=lambda x, val: transforms.gauss(x, filter=gaussian_filter(kernel_size=7, sigma=val)),
         name=name, transform_name="gauss",
         min_val=0.3, max_val=4, samples=50)
 
     sweep(encoded_images, targets, model,
         transform=lambda x, val: transforms.whiteout(x, scale=val, rand_val=False),
         name=name, transform_name="whiteout",
-        min_val=0, max_val=0.2, samples=50)
+        min_val=0.02, max_val=0.2, samples=50)
 
     sweep(encoded_images, targets, model,
         transform=lambda x, val: transforms.resize_rect(x, ratio=val, rand_val=False),
@@ -125,6 +125,11 @@ def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=250
         transform=lambda x, val: transforms.color_jitter(x, jitter=val),
         name=name, transform_name="jitter",
         min_val=0, max_val=0.2, samples=50)
+
+    sweep(encoded_images, targets, model,
+        transform=lambda x, val: transforms.convertToJpeg(x, q=val),
+        name=name, transform_name="jpg",
+        min_val=10, max_val=100, samples=50)
 
     model.module.set_distribution(transforms.training, n=DIST_SIZE)
     model.train()
