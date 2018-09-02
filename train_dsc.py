@@ -23,7 +23,7 @@ from sklearn.metrics import roc_auc_score
 from scipy.stats import pearsonr
 import IPython
 
-DATA_PATH = 'data/encode_120'
+DATA_PATH = 'jobs/experiment59/output/'
 logger = Logger("train_dsc", ("loss", "corr"), print_every=5, plot_every=20)
 
 def loss_func(model, x, y):
@@ -31,16 +31,15 @@ def loss_func(model, x, y):
 	corr, p = pearsonr(cleaned.data.cpu().numpy().flatten(), y.data.cpu().numpy().flatten())
 	return (cleaned - y).pow(2).sum(), corr
 
-def data_gen(files, batch_size=64):
+def data_gen(files):
 	while True:
-		enc_files = random.sample(files, batch_size)
-		orig_files = [f.replace('encoded', 'original') for f in enc_files]
-		print(enc_files)
-		encoded_ims = [im.load(image) for image in enc_files]
-		original_ims = [im.load(image) for image in orig_files]
-		encoded, original = im.stack(encoded_ims), im.stack(original_ims)
-
-		yield encoded, (encoded-original)
+		batch = random.choice(files)
+		perturbation, images, targets = torch.load(batch)        
+		perturbation_zc = perturbation/perturbation.view(perturbation.shape[0], -1)\
+			.norm(2, dim=1, keepdim=True).unsqueeze(2).unsqueeze(2).expand_as(perturbation)\
+			*EPSILON*(perturbation[0].nelement()**0.5)
+		enc_ims = (images + perturbation_zc).clamp(min=0.0, max=1.0)
+		yield enc_ims, perturbation_zc
 
 def viz_preds(model, x, y):
 	preds = model(x)
@@ -54,10 +53,10 @@ if __name__ == "__main__":
 	model = nn.DataParallel(UNet())
 	model.train()
 
-	optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+	optimizer = torch.optim.Adam(model.parameters(), lr=2e-3)
 
 	# optimizer.load_state_dict('output/unet_opt.pth')	
-	model.module.load('jobs/experiment_unet/output/train_unet.pth')
+	# model.module.load('jobs/experiment_unet/output/train_unet.pth')
 
 	logger.add_hook(lambda: 
 		[print (f"Saving model/opt to {OUTPUT_DIR}train_unet.pth"),
@@ -66,14 +65,14 @@ if __name__ == "__main__":
 		freq=100,
 	)
 
-	files = glob.glob(f"{DATA_PATH}/*encoded*.jpg")
-	train_files, val_files = files[:-128], files[-128:]
-	x_val, y_val = next(data_gen(val_files, 128))
+	files = glob.glob(f"{DATA_PATH}/*.pth")
+	train_files, val_files = files[:-1], files[-1:]
+	x_val, y_val = next(data_gen(val_files))
 
-	for i, (x, y) in enumerate(data_gen(train_files, 128)):
+	for i, (x, y) in enumerate(data_gen(train_files)):
 		loss, corr = loss_func(model, x, y)
 
-		logger.step ("loss", min(5000, loss))
+		logger.step ("loss", min(2000, loss))
 		logger.step ("corr", corr)
 
 		optimizer.zero_grad()
@@ -82,9 +81,9 @@ if __name__ == "__main__":
 
 		if i % 20 == 0:
 			model.eval()
-			val_loss = loss_func(model, x_val, y_val)
+			val_loss, val_corr = loss_func(model, x_val, y_val)
 			model.train()
-			print(f'val_loss = {val_loss}')
+			print(f'val_loss = {val_loss.cpu().data.numpy()} val_corr = {val_corr}')
 
-		if i == 2000: break
+		if i == 5000: break
 

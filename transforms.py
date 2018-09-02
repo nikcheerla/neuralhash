@@ -112,11 +112,12 @@ def crop(x, p=0.1):
     return x * mask
 
 def training(x):
-    x = random.choice([gauss, noise, color_jitter, whiteout, lambda x: x, lambda x: x])(x)
-    x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
-    x = random.choice([flip, crop, lambda x: x])(x)
-    x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
-    x = random.choice([gauss, noise, color_jitter, crop, lambda x: x, lambda x: x])(x)
+    # x = random.choice([gauss, noise, color_jitter, whiteout, lambda x: x, lambda x: x])(x)
+    # x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
+    # x = random.choice([flip, whiteout, lambda x: x])(x)
+    # x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
+    # x = random.choice([gauss, noise, color_jitter, whiteout, lambda x: x, lambda x: x])(x)
+    x = crop(x)
     x = identity(x)
     return x
 

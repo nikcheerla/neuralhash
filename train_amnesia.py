@@ -57,11 +57,14 @@ def init_data(output_path, n=None):
 if __name__ == "__main__":	
 
 	model = nn.DataParallel(DecodingGramNet(n=DIST_SIZE, distribution=transforms.training))
-	params = itertools.chain(model.module.features[-1].parameters(), 
-							model.module.features[-2].parameters(),
+	# model = nn.DataParallel(DecodingGramNet.load(distribution=transforms.encoding,
+    #                            n=DIST_SIZE, weights_file='jobs/experiment55/output/train_test.pth'))
+	# nn.init.xavier_uniform(model.module.features[-2:].parameters())
+	params = itertools.chain(model.module.features[-6:].parameters(), 
+							# model.module.features[-2].parameters(),
 							model.module.classifier.parameters())
 	optimizer = torch.optim.Adam(params, lr=2.5e-3)
-	init_data("data/amnesia")
+	init_data("data/amnesia", n=5760)
 
 	logger.add_hook(lambda: 
 		[print (f"Saving model to {OUTPUT_DIR}train_test.pth"),
@@ -70,7 +73,7 @@ if __name__ == "__main__":
 	)
 
 	files = glob.glob(f"data/amnesia/*.pth")
-	for i, save_file in enumerate(random.choice(files) for i in range(0, 1801)):
+	for i, save_file in enumerate(random.choice(files) for i in range(0, 2101)):
 
 		perturbation, images, targets = torch.load(save_file)
 		perturbation = perturbation.requires_grad_()
@@ -96,4 +99,7 @@ if __name__ == "__main__":
 		if i != 0 and i % 300 == 0:
 			#test_transforms(model, random.sample(TRAIN_FILES, 16), name=f'iter{i}_train')
 			test_transforms(model, VAL_FILES, name=f'iter{i}_test')
+		elif i > 1800 and i % 100 == 0:
+			test_transforms(model, VAL_FILES, name=f'iter{i}_test', max_iter=1)
+
 

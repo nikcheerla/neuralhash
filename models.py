@@ -90,18 +90,17 @@ class DecodingGramNet(BaseModel):
 	def __init__(self, *args, **kwargs):
 		super(DecodingGramNet, self).__init__(*args, **kwargs)
 
-		self.features = models.squeezenet1_1(pretrained=True).features
+		self.features = models.vgg11(pretrained=True).features
 		# self.gram_classifiers = nn.ModuleList([
 		# 	nn.Linear(256**2, 256),
 		# 	nn.Linear(384**2, 256),
 		# 	nn.Linear(512**2, 256),
 		# 	])
-		self.indices = [6, 8, 10, 12]
+		self.indices = [5, 10, 15, 20]
 		self.classifier = nn.Linear(1408, TARGET_SIZE*2)
 		self.to(DEVICE)
 
 	def forward(self, x):
-
 		x = torch.cat([self.distribution(x).unsqueeze(1) \
 						for i in range(0, self.n)], dim=1)
 		B, N, C, H, W = x.shape
@@ -135,6 +134,7 @@ class DecodingGramNet(BaseModel):
 		x = x.view(x.size(0), -1)
 
 		x = (x - x.mean(dim=1, keepdim=True))/(x.std(dim=1, keepdim=True))
+
 		x = self.classifier(x)
 		x = x.view(B, N, TARGET_SIZE, 2)#.mean(dim=0) # reshape and average
 

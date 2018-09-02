@@ -44,7 +44,6 @@ def run(cmd, mode='experiment', config="default", shutdown=False, debug=False):
 			for stdout_line in iter(process.stdout.readline, ""):
 				print (stdout_line, end="")
 				outfile.write(stdout_line)
-
 		return_code = process.wait()
 		run_data["status"] = "Error" if return_code else "Complete"
 	except KeyboardInterrupt:
