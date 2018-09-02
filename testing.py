@@ -105,6 +105,26 @@ def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=250
         transform=lambda x, val: transforms.crop(x, p=val),
         name=name, transform_name="crop",
         min_val=0.1, max_val=1.0, samples=50)
+    
+    sweep(encoded_images, targets, model,
+        transform=lambda x, val: transforms.gauss(x, sigma=val, rand_val=False),
+        name=name, transform_name="gauss",
+        min_val=0.3, max_val=4, samples=50)
+
+    sweep(encoded_images, targets, model,
+        transform=lambda x, val: transforms.whiteout(x, scale=val, rand_val=False),
+        name=name, transform_name="whiteout",
+        min_val=0, max_val=0.2, samples=50)
+
+    sweep(encoded_images, targets, model,
+        transform=lambda x, val: transforms.resize_rect(x, ratio=val, rand_val=False),
+        name=name, transform_name="resize_rect",
+        min_val=0.5, max_val=1.5, samples=50)
+
+    sweep(encoded_images, targets, model,
+        transform=lambda x, val: transforms.color_jitter(x, jitter=val),
+        name=name, transform_name="jitter",
+        min_val=0, max_val=0.2, samples=50)
 
     model.module.set_distribution(transforms.training, n=DIST_SIZE)
     model.train()
@@ -131,7 +151,8 @@ def evaluate(model, image, target, test_transforms=False):
                 min_val=-0.6, max_val=0.6, samples=60)
 
 
-
+def test_transfer(model, holdout, image_files=VAL_FILES, max_iter=250):
+    pass
 
 if __name__ == "__main__":
     Fire()
