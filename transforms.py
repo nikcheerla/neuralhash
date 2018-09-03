@@ -79,7 +79,7 @@ def resize(x, val=224):
 @sample(0.6, 1.4)
 def resize_rect(x, ratio=0.8):
 
-    x_scale = random.uniform(0, 1 - ratio) + 1
+    x_scale = random.uniform(ratio, 1)
     y_scale = x_scale / ratio
 
     grid = F.affine_grid(affine(x), size=x.size())
@@ -110,7 +110,7 @@ def rotate(x, theta=45):
     return img
 
 
-@sample(0.9, 1.1)
+@sample(0.9, 1.1, plot_range=(0.8, 1.2))
 def elastic(x, ratio=0.8, n=3, p=0.1):
 
     N, C, H, W = x.shape
@@ -214,7 +214,7 @@ def whiteout(x, scale=0.1, n=6):
     return x
 
 
-@sample(0.5, 1)
+@sample(0.5, 1, plot_range=(0.2, 1))
 def crop(x, p=0.6):
     N, C, H, W = x.shape
     H_c, W_c = int((H * W * p) ** 0.5), int((H * W * p) ** 0.5)
@@ -227,7 +227,7 @@ def crop(x, p=0.6):
 
 
 ## NOT DIFFERENTIABLE ##
-@sample(10, 100)
+@sample(50, 100, plot_range=(10, 100))
 def jpeg_transform(x, q=50):
     jpgs = []
     for img in x:
@@ -357,8 +357,9 @@ if __name__ == "__main__":
         transformed = im.numpy(transform.random(img).squeeze())
         plt.imsave(f"output/encoded_{transform.__name__}.jpg", transformed)
         time = timeit.timeit(lambda: im.numpy(transform.random(img).squeeze()), number=40)
-        print(f"{transform.__name__}: {time:0.5f}")
+        x_min, x_max = transform.plot_range
+        print(f"{transform.__name__}: ({x_min} - {x_max}) {time:0.5f}")
 
     for i in range(0, 10):
-        transformed = im.numpy(new_dist(img).squeeze())
+        transformed = im.numpy(encoding(img).squeeze())
         plt.imsave(f"output/encoded_{i}.jpg", transformed)
