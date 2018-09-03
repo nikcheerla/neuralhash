@@ -285,10 +285,11 @@ def test_transfer(model=None, image_files=VAL_FILES, max_iter=250):
         transforms.flip
     ]
     edges, base_scores = {}, {}
-    for t1 in transform_list:
-        hold_out_dist = lambda x: transforms.new_dist(x, [t1])
+    score_matrix = np.zeros((len(transform_list), len(transform_list)))
+
+    for i, t1 in enumerate(transform_list):
             
-        model.set_distribution(hold_out_dist, n=ENCODING_DIST_SIZE)
+        model.set_distribution(lambda x: t1.random(x), n=ENCODING_DIST_SIZE)
         encoded_images = encode_binary(
             images, targets, model, n=ENCODING_DIST_SIZE, verbose=True, max_iter=max_iter, use_weighting=True
         )
@@ -297,14 +298,17 @@ def test_transfer(model=None, image_files=VAL_FILES, max_iter=250):
         t1_error = sweep(encoded_images, targets, model, transform=t1, name=f'{t1.__name__}', samples=60)
         base_scores[t1.__name__] = t1_error
         
-        for t2 in transform_list:
+        for j, t2 in enumerate(transform_list):
             if t1 == t2: continue
             
             t2_error = sweep(encoded_images, targets, model, transform=t2, name=f'{t1.__name__}->{t2.__name__}', samples=60)
             
             edges[(t1.__name__, t2.__name__)] = t2_error
+            score_matrix[i,j] = t2_error
             print(f'{t1.__name__} --> {t2.__name__}: {t2_error}')
 
+    with open('output/score_matrix.p') as fp:
+        pickle.dump(score_matrix, fp)
     with open('output/edges.p', 'wb') as fp:
         pickle.dump(edges, fp)
     with open('output/base_scores.p', 'wb') as fp:

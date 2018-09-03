@@ -3,6 +3,10 @@
 import numpy as np
 import random, sys, os, time, glob, math
 
+import matplotlib as mpl
+mpl.use("Agg")
+import matplotlib.pyplot as plt
+
 from skimage import io, color
 
 import torch
@@ -11,6 +15,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 import random
+import IPython
 
 # CRITICAL HYPER PARAMS
 EPSILON = 9e-3
@@ -108,26 +113,33 @@ def elapsed(times=[time.time()]):
 	times.append(time.time())
 	return times[-1] - times[-2]
 
-def create_heatmap(data, lables, x_label, y_label):
+def create_heatmap(data, labels, x_label="", y_label=""):
 	fig, ax = plt.subplots()
-	im = ax.imshow(harvest)
+	im = ax.imshow(data)
 
 	# We want to show all ticks...
-	ax.set_xticks(np.arange(len(farmers)))
-	ax.set_yticks(np.arange(len(vegetables)))
+	ax.set_xticks(np.arange(len(labels)))
+	ax.set_yticks(np.arange(len(labels)))
 	# ... and label them with the respective list entries
-	ax.set_xticklabels(farmers)
-	ax.set_yticklabels(vegetables)
+	ax.set_xticklabels(labels)
+	ax.set_yticklabels(labels)
 
 	# Rotate the tick labels and set their alignment.
 	plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
 	         rotation_mode="anchor")
 
 	# Loop over data dimensions and create text annotations.
-	for i in range(len(vegetables)):
-	    for j in range(len(farmers)):
-	        text = ax.text(j, i, harvest[i, j],
+	for i in range(len(labels)):
+	    for j in range(len(labels)):
+	        text = ax.text(j, i, "{0:.2f}".format(round(data[i,j],2)),
 	                       ha="center", va="center", color="w")
+
+	ax.set_title("Affinity matrix")
+	fig.tight_layout()
+	plt.savefig(f"output/affinity.jpg")
+	plt.cla()
+	plt.clf()
+	plt.close()
 
 def gaussian_filter(kernel_size=5, sigma=1.0):
 
@@ -252,7 +264,7 @@ class binary(object):
 		return np.mean((a - b)**2)
 
 if __name__ == "__main__":
-
+	IPython.embed()
 	data = im.load("test_data/n02108915_4657.jpg")
 	im.save(data, file="out.jpg")
 
