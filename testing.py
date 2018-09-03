@@ -31,9 +31,7 @@ logger.add_hook(lambda x: logger.step(), feature="orig", freq=1)
 
 def sweep(images, targets, model, transform, name, samples=10):
 
-    span = transform.max_val - transform.min_val
-    min_val = transform.min_val - span // 2
-    max_val = transform.max_val + span // 2
+    min_val, max_val = transform.plot_range
 
     results = []
     for val in tqdm.tqdm(np.linspace(min_val, max_val, samples), ncols=30):
@@ -274,15 +272,15 @@ def test_transfer(model=None, image_files=VAL_FILES, max_iter=250):
     model.eval()
 
     transform_list = [
-        transforms.rotate, 
-        transforms.scale, 
+        transforms.rotate,
+        transforms.scale,
         transforms.translate,
         transforms.noise,
         transforms.crop,
         transforms.whiteout,
         transforms.resize_rect,
         transforms.gauss,
-        transforms.flip
+        transforms.flip,
     ]
     edges, base_scores = {}, {}
     score_matrix = np.zeros((len(transform_list), len(transform_list)))
@@ -290,12 +288,13 @@ def test_transfer(model=None, image_files=VAL_FILES, max_iter=250):
     for i, t1 in enumerate(transform_list):
             
         model.set_distribution(lambda x: t1.random(x), n=ENCODING_DIST_SIZE)
+
         encoded_images = encode_binary(
             images, targets, model, n=ENCODING_DIST_SIZE, verbose=True, max_iter=max_iter, use_weighting=True
         )
-           
+
         model.set_distribution(transforms.identity, n=1)
-        t1_error = sweep(encoded_images, targets, model, transform=t1, name=f'{t1.__name__}', samples=60)
+        t1_error = sweep(encoded_images, targets, model, transform=t1, name=f"{t1.__name__}", samples=60)
         base_scores[t1.__name__] = t1_error
         
         for j, t2 in enumerate(transform_list):
@@ -311,8 +310,9 @@ def test_transfer(model=None, image_files=VAL_FILES, max_iter=250):
         pickle.dump(score_matrix, fp)
     with open('output/edges.p', 'wb') as fp:
         pickle.dump(edges, fp)
-    with open('output/base_scores.p', 'wb') as fp:
+    with open("output/base_scores.p", "wb") as fp:
         pickle.dump(base_scores, fp)
+
 
 if __name__ == "__main__":
     Fire()
