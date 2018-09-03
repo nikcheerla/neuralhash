@@ -17,14 +17,16 @@ from utils import *
 import transforms
 
 from encoding import encode_binary
-from models import DecodingNet, DecodingGramNet
-from logger import Logger
+from models import BaseModel, DecodingModel, DataParallelModel
+from logger import Logger, VisdomLogger
 
 import IPython
 
 
-logger = Logger("bits", ("orig", "rotate", "scale", "translate", "noise", "crop"),
-                print_every=1, plot_every=5)
+# LOGGING
+logger = VisdomLogger("test", server='35.230.67.129', port=8000, env=JOB)
+logger.add_hook(lambda x: logger.step(), feature='orig', freq=1)
+
 
 def sweep(images, targets, model, transform, \
             name, transform_name, 
@@ -39,13 +41,20 @@ def sweep(images, targets, model, transform, \
         binary_loss = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
         results.append((val, binary_loss, mse_loss))
 
-    x, bits_off, mse = zip(*results)
+    x, bits_off, mse = (np.array(x) for x in zip(*results))
 
     print (transform_name, np.mean(bits_off))
-    logger.step(transform_name, np.mean(bits_off))
+    logger.update(transform_name, np.mean(bits_off))
 
     np.savez_compressed(f"{OUTPUT_DIR}/{name}_{transform_name}.npz", 
                         x=x, bits_off=bits_off, mse=mse)
+
+    # logger.viz(f"{name}_{transform_name}", method='line',
+    #         Y=np.column_stack((32*mse, bits_off)),
+    #         X=np.column_stack((x, x)),
+    #         opts=dict(title=f"{name}_{transform_name}", ylim=(0, 16), 
+    #             legend=['squared error', 'bits'])
+    # )
 
     fig, ax1 = plt.subplots()
     ax1.plot(x, bits_off, 'b')
@@ -59,28 +68,31 @@ def sweep(images, targets, model, transform, \
     plt.cla(); plt.clf(); plt.close()
 
 
-def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=250):
+def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=200):
 
-    if isinstance(model, str):
-        model = nn.DataParallel(DecodingGramNet.load(distribution=transforms.encoding,
-                                            n=96, weights_file=model))
+    if not isinstance(model, BaseModel):
+        print (f"Loading model from {model}")
+        model = DataParallelModel(DecodingModel.load(distribution=transforms.encoding,
+                                            n=ENCODING_DIST_SIZE, weights_file=model))
 
     images = [im.load(image) for image in image_files]
     images = im.stack(images)
     targets = [binary.random(n=TARGET_SIZE) for _ in range(0, len(images))]
     model.eval()
 
-    encoded_images = encode_binary(images, targets, model, n=ENCODING_DIST_SIZE, verbose=True, max_iter=max_iter, use_weighting=False)
-
+    encoded_images = encode_binary(images, targets, model, n=ENCODING_DIST_SIZE,
+        verbose=True, max_iter=max_iter, use_weighting=True)
+    
+    logger.images(images, "original_images", resize=196)
+    logger.images(encoded_images, "encoded_images", resize=196)
     for img, encoded_im, filename, target in zip(images, encoded_images, image_files, targets):
         im.save(im.numpy(img), file=f"{OUTPUT_DIR}_{binary.str(target)}_original_{filename.split('/')[-1]}")
         im.save(im.numpy(encoded_im), file=f"{OUTPUT_DIR}_{binary.str(target)}_encoded_{filename.split('/')[-1]}")
 
-    model.module.set_distribution(transforms.identity, n=1)
+    model.set_distribution(transforms.identity, n=1)
     predictions = model(encoded_images).mean(dim=1).cpu().data.numpy()
     binary_loss = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
 
-    logger.step("orig", binary_loss)
     sweep(encoded_images, targets, model,
             transform=lambda x, val: transforms.rotate(x, rand_val=False, theta=val),
             name=name, transform_name="rotate",
@@ -92,7 +104,7 @@ def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=250
             min_val=0.6, max_val=1.4, samples=50) 
 
     sweep(encoded_images, targets, model,
-            transform=lambda x, val: transforms.translate(x, max_val=val),
+            transform=lambda x, val: transforms.translate(x, rand_val=False, radius=val),
             name=name, transform_name="translate",
             min_val=0.0, max_val=1.0, samples=50)
 
@@ -105,15 +117,41 @@ def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=250
         transform=lambda x, val: transforms.crop(x, p=val),
         name=name, transform_name="crop",
         min_val=0.1, max_val=1.0, samples=50)
+    
+    sweep(encoded_images, targets, model,
+        transform=lambda x, val: transforms.gauss(x, sigma=val, rand_val=False),
+        name=name, transform_name="gauss",
+        min_val=0.3, max_val=4, samples=50)
 
-    model.module.set_distribution(transforms.training, n=DIST_SIZE)
+    sweep(encoded_images, targets, model,
+        transform=lambda x, val: transforms.whiteout(x, scale=val, rand_val=False),
+        name=name, transform_name="whiteout",
+        min_val=0.02, max_val=0.2, samples=50)
+
+    sweep(encoded_images, targets, model,
+        transform=lambda x, val: transforms.resize_rect(x, ratio=val, rand_val=False),
+        name=name, transform_name="resize_rect",
+        min_val=0.5, max_val=1.5, samples=50)
+
+    sweep(encoded_images, targets, model,
+        transform=lambda x, val: transforms.color_jitter(x, jitter=val),
+        name=name, transform_name="jitter",
+        min_val=0, max_val=0.2, samples=50)
+
+    sweep(encoded_images, targets, model,
+        transform=lambda x, val: transforms.convertToJpeg(x, q=val),
+        name=name, transform_name="jpg",
+        min_val=10, max_val=100, samples=50)
+
+    logger.update("orig", binary_loss)
+    model.set_distribution(transforms.training, n=DIST_SIZE)
     model.train()
 
 
 def evaluate(model, image, target, test_transforms=False):
     
-    if not isinstance(model, DecodingGramNet):
-        model = nn.DataParallel(DecodingGramNet.load(distribution=transforms.identity,
+    if not isinstance(model, BaseModel):
+        model = DataParallelModel(DecodingModel.load(distribution=transforms.identity,
                                             n=1, weights_file=model))
 
     image = im.torch(im.load(image)).unsqueeze(0)
@@ -121,8 +159,8 @@ def evaluate(model, image, target, test_transforms=False):
     prediction = model(image).mean(dim=1).squeeze().cpu().data.numpy()
     prediction = binary.get(prediction)
 
-    print (f"Target: {binary.str(target)}, Prediction: {binary.str(prediction)}, \
-            Distance: {binary.distance(target, prediction)}")
+    # print (f"Target: {binary.str(target)}, Prediction: {binary.str(prediction)}, \
+    #         Distance: {binary.distance(target, prediction)}")
 
     if test_transforms:
         sweep(image, [target], model,
@@ -131,7 +169,8 @@ def evaluate(model, image, target, test_transforms=False):
                 min_val=-0.6, max_val=0.6, samples=60)
 
 
-
+def test_transfer(model, holdout, image_files=VAL_FILES, max_iter=250):
+    pass
 
 if __name__ == "__main__":
     Fire()

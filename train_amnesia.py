@@ -17,8 +17,8 @@ from torch.autograd import Variable
 from utils import *
 import transforms
 from encoding import encode_binary
-from models import DecodingNet, DecodingGramNet
-from logger import Logger
+from models import DecodingModel, DataParallelModel
+from logger import Logger, VisdomLogger
 
 from skimage.morphology import binary_dilation
 import IPython
@@ -26,7 +26,7 @@ import IPython
 from testing import test_transforms
 
 
-logger = Logger("train", ("loss", "bits"), print_every=10, plot_every=40)
+
 
 def loss_func(model, x, targets):
 	scores = model.forward(x)
@@ -51,49 +51,53 @@ def init_data(output_path, n=None):
 		images = im.stack([im.load(img_file) for img_file in files]).detach()
 		perturbation = nn.Parameter(0.03*torch.randn(images.size()).to(DEVICE)+0.0)
 		targets = [binary.random(n=TARGET_SIZE) for i in range(len(images))]
-		# optimizer = torch.optim.Adam([perturbation], lr=ENCODING_LR)
 		torch.save((perturbation.data, images.data, targets), f'{output_path}/{k}.pth')
 
-if __name__ == "__main__":	
+if __name__ == "__main__":
 
-	model = nn.DataParallel(DecodingGramNet(n=DIST_SIZE, distribution=transforms.training))
-	params = itertools.chain(model.module.features[-1].parameters(), 
-							model.module.features[-2].parameters(),
-							model.module.classifier.parameters())
+	model = DataParallelModel(DecodingModel(n=DIST_SIZE, distribution=transforms.training))
+	params = itertools.chain(model.module.classifier.parameters(), 
+							model.module.features[-1].parameters())
 	optimizer = torch.optim.Adam(params, lr=2.5e-3)
 	init_data("data/amnesia")
 
-	logger.add_hook(lambda: 
+	logger = VisdomLogger("train", server='35.230.67.129', port=8000, env=JOB)
+	logger.add_hook (lambda x: logger.step(), feature='epoch', freq=20)
+	logger.add_hook (lambda data: logger.plot(data, "train_loss"), feature='loss', freq=50)
+	logger.add_hook (lambda data: logger.plot(data, "train_bits"), feature='bits', freq=50)
+	logger.add_hook (lambda x: 
 		[print (f"Saving model to {OUTPUT_DIR}train_test.pth"),
-		model.module.save(OUTPUT_DIR + "train_test.pth")],
-		freq=40,
+		model.save(OUTPUT_DIR + "train_test.pth")],
+		feature='epoch', freq=100,
 	)
 
 	files = glob.glob(f"data/amnesia/*.pth")
-	for i, save_file in enumerate(random.choice(files) for i in range(0, 1801)):
+	for i, save_file in enumerate(random.choice(files) for i in range(0, 2701)):
 
 		perturbation, images, targets = torch.load(save_file)
 		perturbation = perturbation.requires_grad_()
-		# pert_optimizer = torch.optim.Adam([perturbation], lr=ENCODING_LR)
-		# pert_optimizer.load_state_dict(optimizer_state)
 
 		perturbation.requires_grad = True
 		encoded_ims, perturbation = encode_binary(images, targets, \
 			model, max_iter=1, perturbation=perturbation, use_weighting=True)
 
 		loss, predictions = loss_func(model, encoded_ims, targets)
-		logger.step ("loss", loss)
+		error = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
 
-		optimizer.zero_grad()
+		logger.update ("epoch", i)
+		logger.update ("loss", loss)
+		logger.update ("bits", error)
+
 		loss.backward()
-		optimizer.step()
+		optimizer.step(); optimizer.zero_grad()
 
 		torch.save((perturbation.data, images.data, targets), save_file)
 
-		error = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
-		logger.step ("bits", error)
-
 		if i != 0 and i % 300 == 0:
+			
+			model.save("output/train_test.pth")
+			model2 = DataParallelModel(DecodingModel.load(distribution=transforms.training,
+											n=DIST_SIZE, weights_file="output/train_test.pth"))
 			#test_transforms(model, random.sample(TRAIN_FILES, 16), name=f'iter{i}_train')
-			test_transforms(model, VAL_FILES, name=f'iter{i}_test')
+			test_transforms(model2, VAL_FILES, name=f'iter{i}_test', max_iter=1)
 

@@ -1,13 +1,13 @@
 
 import random, sys, os, glob, yaml, time
-import argparse, subprocess, shutil
+import argparse, subprocess, shutil, shlex
 from fire import Fire
 from utils import elapsed
 
 import IPython
 
 
-def run(cmd, mode='experiment', config="default", shutdown=False, debug=False):
+def execute(cmd, mode='experiment', config="default", shutdown=False, debug=False):
 
 	elapsed()
 	try:
@@ -28,13 +28,16 @@ def run(cmd, mode='experiment', config="default", shutdown=False, debug=False):
 	os.makedirs("output/")
 	os.makedirs(f"jobs/{run_name}", exist_ok=True)
 
-	cmd = cmd.split()
+	with open("jobs/jobinfo.txt", "w") as config_file:
+		print(config, file=config_file)
+
+	cmd = shlex.split(cmd)
 	if cmd[0] =='python' and debug: 
 		cmd[0] = 'ipython'
 		cmd.insert(1, '-i')
 	elif cmd[0] =='python': 
 		cmd.insert(1, '-u')
-	
+
 	print (" ".join(cmd))
 	process = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE,\
 							universal_newlines=True)
@@ -76,9 +79,11 @@ def run(cmd, mode='experiment', config="default", shutdown=False, debug=False):
 		time.sleep(60)
 		subprocess.call("sudo shutdown -h now", shell=True)
 
-
+def run(cmd, mode='experiment', config="default", shutdown=False, debug=False):
+	cmd = f""" screen -S {config} bash -c "python run.py execute \\"{cmd}\\" --mode {mode} --config {config} --shutdown {shutdown} --debug {debug}" """
+	subprocess.call(shlex.split(cmd))
 
 if __name__ == "__main__":
-	Fire(run)
+	Fire({"run": run, "execute": execute})
 
 
