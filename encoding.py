@@ -27,7 +27,7 @@ import transforms
 # LOGGING
 logger = VisdomLogger("encoding", server="35.230.67.129", port=8000, env=JOB)
 logger.add_hook(lambda x: logger.step(), feature="epoch", freq=20)
-logger.add_hook(lambda x: logger.plot(x, "Encoding Loss", opts=dict(ymin=0)), feature="loss", freq=20)
+logger.add_hook(lambda x: logger.plot(x, "Encoding Loss", opts=dict(ymin=0)), feature="loss", freq=50)
 
 
 """ 
