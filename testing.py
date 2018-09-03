@@ -1,5 +1,5 @@
 
-import random, sys, os, glob
+import random, sys, os, glob, pickle
 import argparse, tqdm
 
 import matplotlib as mpl
@@ -50,7 +50,6 @@ def sweep(images, targets, model, transform, name, samples=10):
     logger.update(transform.__name__, np.mean(bits_off))
 
     np.savez_compressed(f"output/{name}_{transform.__name__}.npz", x=x, bits_off=bits_off, mse=mse)
-
     # logger.viz(f"{name}_{transform_name}", method='line',
     #         Y=np.column_stack((32*mse, bits_off)),
     #         X=np.column_stack((x, x)),
@@ -70,14 +69,15 @@ def sweep(images, targets, model, transform, name, samples=10):
     plt.cla()
     plt.clf()
     plt.close()
+    return np.mean(bits_off)
 
 
-def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=300):
+def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=250):
 
     if not isinstance(model, BaseModel):
         print(f"Loading model from {model}")
         model = DataParallelModel(
-            DecodingModel.load(distribution=transforms.encoding, n=ENCODING_DIST_SIZE, weights_file=model)
+            DecodingModel.load(distribution=transforms.new_dist, n=ENCODING_DIST_SIZE, weights_file=model)
         )
 
     images = [im.load(image) for image in image_files]
@@ -261,12 +261,18 @@ def evaluate(model, image, target, test_transforms=False):
         sweep(image, [target], model, transform=transforms.rotate, name="eval", samples=60)
 
 
-def test_transfer(model=None, image_files=VAL_FILES, name="test", max_iter=300):
+def test_transfer(model=None, image_files=VAL_FILES, max_iter=250):
     if not isinstance(model, BaseModel):
         print(f"Loading model from {model}")
         model = DataParallelModel(
             DecodingModel.load(distribution=transforms.encoding, n=ENCODING_DIST_SIZE, weights_file=model)
         )
+
+    images = [im.load(image) for image in image_files]
+    images = im.stack(images)
+    targets = [binary.random(n=TARGET_SIZE) for _ in range(0, len(images))]
+    model.eval()
+
     transform_list = [
         transforms.rotate, 
         transforms.scale, 
@@ -274,9 +280,35 @@ def test_transfer(model=None, image_files=VAL_FILES, name="test", max_iter=300):
         transforms.noise,
         transforms.crop,
         transforms.whiteout,
+        transforms.resize_rect,
+        transforms.gauss,
+        transforms.flip
     ]
+    edges, base_scores = {}, {}
+    for t1 in transform_list:
+        hold_out_dist = lambda x: transforms.new_dist(x, [t1])
+            
+        model.set_distribution(hold_out_dist, n=ENCODING_DIST_SIZE)
+        encoded_images = encode_binary(
+            images, targets, model, n=ENCODING_DIST_SIZE, verbose=True, max_iter=max_iter, use_weighting=True
+        )
+           
+        model.set_distribution(transforms.identity, n=1)
+        t1_error = sweep(encoded_images, targets, model, transform=t1, name=f'{t1.__name__}', samples=60)
+        base_scores[t1.__name__] = t1_error
+        
+        for t2 in transform_list:
+            if t1 == t2: continue
+            
+            t2_error = sweep(encoded_images, targets, model, transform=t2, name=f'{t1.__name__}->{t2.__name__}', samples=60)
+            
+            edges[(t1.__name__, t2.__name__)] = t2_error
+            print(f'{t1.__name__} --> {t2.__name__}: {t2_error}')
 
-
+    with open('output/edges.p', 'wb') as fp:
+        pickle.dump(edges, fp)
+    with open('output/base_scores.p', 'wb') as fp:
+        pickle.dump(base_scores, fp)
 
 if __name__ == "__main__":
     Fire()

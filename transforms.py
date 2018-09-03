@@ -69,7 +69,7 @@ def resize(x, val=224):
     return img
 
 
-@sample(0.8, 1.2)
+@sample(0.6, 1.4)
 def resize_rect(x, ratio=0.8):
 
     x_scale = random.uniform(0, 1 - ratio) + 1
@@ -207,7 +207,7 @@ def whiteout(x, scale=0.1, n=6):
     return x
 
 
-@sample(0.6, 1)
+@sample(0.5, 1)
 def crop(x, p=0.6):
     N, C, H, W = x.shape
     H_c, W_c = int((H * W * p) ** 0.5), int((H * W * p) ** 0.5)
@@ -295,22 +295,13 @@ def training(x):
 def encoding(x):
     return training(x)
 
-def new_dist(x):
-    _ = sample(0, 0)(lambda x, val: x)
-    transform_list = [
-        rotate, 
-        scale, 
-        translate,
-        noise,
-        crop,
-        whiteout,
-        resize_rect,
-        gauss,
-        flip,
-        _
-    ]
-    x = random.choice(transform_list).random(x)
-    x = random.choice(transform_list).random(x)
+def new_dist(x, t_list):
+    # _ = sample(0, 0)(lambda x, val: x)
+    # t_list.extend([_,_])
+    x = random.choice(t_list).random(x)
+    # x = random.choice(t_list).random(x)
+    # x = random.choice(t_list).random(x)
+
     x = identity(x)
     return x
 
@@ -335,32 +326,32 @@ if __name__ == "__main__":
     img = im.load("images/house.png")
     img = im.torch(img).unsqueeze(0)
 
-    # for transform in [
-    #     identity,
-    #     elastic,
-    #     motion_blur,
-    #     impulse_noise,
-    #     jpeg_transform,
-    #     brightness,
-    #     contrast,
-    #     blur,
-    #     pixilate,
-    #     resize,
-    #     resize_rect,
-    #     color_jitter,
-    #     crop,
-    #     scale,
-    #     rotate,
-    #     translate,
-    #     gauss,
-    #     noise,
-    #     flip,
-    #     whiteout,
-    # ]:
-    #     transformed = im.numpy(transform.random(img).squeeze())
-    #     plt.imsave(f"output/encoded_{transform.__name__}.jpg", transformed)
-    #     time = timeit.timeit(lambda: im.numpy(transform.random(img).squeeze()), number=40)
-    #     print(f"{transform.__name__}: {time:0.5f}")
+    for transform in [
+        identity,
+        elastic,
+        motion_blur,
+        impulse_noise,
+        jpeg_transform,
+        brightness,
+        contrast,
+        blur,
+        pixilate,
+        resize,
+        resize_rect,
+        color_jitter,
+        crop,
+        scale,
+        rotate,
+        translate,
+        gauss,
+        noise,
+        flip,
+        whiteout,
+    ]:
+        transformed = im.numpy(transform.random(img).squeeze())
+        plt.imsave(f"output/encoded_{transform.__name__}.jpg", transformed)
+        time = timeit.timeit(lambda: im.numpy(transform.random(img).squeeze()), number=40)
+        print(f"{transform.__name__}: {time:0.5f}")
 
     for i in range(0, 10):
         transformed = im.numpy(new_dist(img).squeeze())
