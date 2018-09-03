@@ -30,8 +30,10 @@ def sample(min_val=0, max_val=1, plot_range=None, generator=None):
         span = max_val - min_val
         min_plot = min_val - span / 2.0
         max_plot = max_val + span / 2.0
-        if min_val >= 0 and max_val >= 0: min_plot = max(min_plot, 0)
-        if min_val <= 0 and max_val <= 0: max_plot = min(max_plot, 0)
+        if min_val >= 0 and max_val >= 0:
+            min_plot = max(min_plot, 0)
+        if min_val <= 0 and max_val <= 0:
+            max_plot = min(max_plot, 0)
         plot_range = (min_plot, max_plot)
 
     if generator is None:
@@ -301,6 +303,7 @@ def training(x):
 def encoding(x):
     return training(x)
 
+
 def new_dist(x, t_list):
     # _ = sample(0, 0)(lambda x, val: x)
     # t_list.extend([_,_])
@@ -310,6 +313,7 @@ def new_dist(x, t_list):
 
     x = identity(x)
     return x
+
 
 # def inference(x):
 #     x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
