@@ -284,9 +284,8 @@ def test_transfer(model=None, image_files=VAL_FILES, max_iter=250):
     ]
     edges, base_scores = {}, {}
     for t1 in transform_list:
-        hold_out_dist = lambda x: transforms.new_dist(x, [t1])
 
-        model.set_distribution(hold_out_dist, n=ENCODING_DIST_SIZE)
+        model.set_distribution(lambda x: t1.random(x), n=ENCODING_DIST_SIZE)
         encoded_images = encode_binary(
             images, targets, model, n=ENCODING_DIST_SIZE, verbose=True, max_iter=max_iter, use_weighting=True
         )
