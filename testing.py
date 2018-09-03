@@ -31,9 +31,7 @@ logger.add_hook(lambda x: logger.step(), feature="orig", freq=1)
 
 def sweep(images, targets, model, transform, name, samples=10):
 
-    span = transform.max_val - transform.min_val
-    min_val = transform.min_val - span // 2
-    max_val = transform.max_val + span // 2
+    min_val, max_val = transform.plot_range
 
     results = []
     for val in tqdm.tqdm(np.linspace(min_val, max_val, samples), ncols=30):

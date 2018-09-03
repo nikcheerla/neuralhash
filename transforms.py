@@ -24,7 +24,15 @@ def affine(data, x=[1, 0, 0], y=[0, 1, 0]):
     return dtype([x, y], device=data.device).float().repeat(data.shape[0], 1, 1)
 
 
-def sample(min_val=0, max_val=1, generator=None):
+def sample(min_val=0, max_val=1, plot_range=None, generator=None):
+
+    if plot_range is None:
+        span = max_val - min_val
+        min_plot = min_val - span / 2.0
+        max_plot = max_val + span / 2.0
+        if min_val >= 0 and max_val >= 0: min_plot = max(min_plot, 0)
+        if min_val <= 0 and max_val <= 0: max_plot = min(max_plot, 0)
+        plot_range = (min_plot, max_plot)
 
     if generator is None:
         generator = lambda: random.uniform(min_val, max_val)
@@ -34,10 +42,9 @@ def sample(min_val=0, max_val=1, generator=None):
             """Wrapper class that turns transforms into dynamic
             callables."""
 
-            def __init__(self, transform, min_val, max_val, generator):
-                self.min_val = min_val
-                self.max_val = max_val
+            def __init__(self, transform, plot_range, generator):
                 self.transform = transform
+                self.plot_range = plot_range
                 self.generator = generator
                 self.__name__ = transform.__name__
 
@@ -50,7 +57,7 @@ def sample(min_val=0, max_val=1, generator=None):
                 val = self.generator()
                 return self.transform(x, val, **kwargs)
 
-        return RandomSampler(transform, min_val, max_val, generator)
+        return RandomSampler(transform, plot_range, generator)
 
     return wrapper
 
@@ -141,7 +148,7 @@ def translate(x, radius=0.15):
     return img
 
 
-@sample(0.3, 2)
+@sample(0.3, 2, plot_range=(0.01, 4))
 def gauss(x, sigma=1):
     filter = gaussian_filter(kernel_size=7, sigma=sigma)
     x = F.conv2d(x, weight=filter.to(x.device), bias=None, groups=3, padding=2)
@@ -162,7 +169,7 @@ def noise(x, intensity=0.05):
     return img
 
 
-@sample(0, 1)
+@sample(0, 1, plot_range=(0, 1))
 def flip(x, val):
     if val < 0.5:
         return x
@@ -186,7 +193,7 @@ def impulse_noise(x, intensity=0.1):
     return x * mask
 
 
-@sample(0.01, 0.2)
+@sample(0.01, 0.2, plot_range=(0.01, 0.3))
 def whiteout(x, scale=0.1, n=6):
 
     noise = dtype(x.size(), device=x.device).normal_().requires_grad_(False) * 0.5
@@ -207,7 +214,7 @@ def whiteout(x, scale=0.1, n=6):
     return x
 
 
-@sample(0.1, 1)
+@sample(0.5, 1)
 def crop(x, p=0.1):
     N, C, H, W = x.shape
     H_c, W_c = int((H * W * p) ** 0.5), int((H * W * p) ** 0.5)
@@ -247,9 +254,8 @@ def brightness(x, brightness_val=0.2):
     return x.clamp(min=0, max=1)
 
 
-@sample(0.8, 1.2)
-def contrast(x, contrast_val=1.1):
-    factor = (259.0 * (contrast_val + 255.0)) / (255.0 * (259.0 - contrast_val))
+@sample(0.5, 1.5)
+def contrast(x, factor=0.1):
     R = (x[:, 0].unsqueeze(1) - 0.5) * factor + 0.5
     G = (x[:, 1].unsqueeze(1) - 0.5) * factor + 0.5
     B = (x[:, 2].unsqueeze(1) - 0.5) * factor + 0.5
