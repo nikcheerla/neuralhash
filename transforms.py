@@ -15,6 +15,10 @@ import IPython
 
 from scipy.ndimage import filters
 
+import torchvision
+from io import BytesIO
+from PIL import Image
+
 def identity(x):
     x = resize(x, rand_val=False, resize_val=224)
     return x
@@ -29,9 +33,14 @@ def resize(x, min_val=100, max_val=300, rand_val=True, resize_val=224):
     img = F.grid_sample(x, grid, padding_mode='border')
     return img
 
-def resize_rect(x, x_val_range=0.3, y_val_range=0.3):
-    x_scale = random.uniform(1-x_val_range, 1+x_val_range)
-    y_scale = random.uniform(1-y_val_range, 1+y_val_range)
+def resize_rect(x, x_val_range=0.3, y_val_range=0.3, rand_val=True, ratio=0.8):
+    if rand_val:
+        x_scale = random.uniform(1-x_val_range, 1+x_val_range)
+        y_scale = random.uniform(1-y_val_range, 1+y_val_range)
+    else:
+        x_scale = random.uniform(0, 1 - ratio) + 1
+        y_scale = x_scale / ratio
+
     grid = F.affine_grid(affine(x), size=x.size())
     grid = torch.cat([grid[:, :, :, 0].unsqueeze(3)*y_scale, grid[:, :, :, 1].unsqueeze(3)*x_scale], dim=3)
     img = F.grid_sample(x, grid, padding_mode='border')
@@ -58,9 +67,12 @@ def rotate(x, max_angle=30, rand_val=True, theta=0):
     img = F.grid_sample(x, grid, padding_mode='border')
     return img
 
-def translate(x, max_val=0.3):
-    
-    sx, sy = (random.uniform(-max_val, max_val) for i in range(0, 2))
+def translate(x, max_val=0.3, rand_val=True, radius=0.15):
+    if rand_val:
+        sx, sy = (random.uniform(-max_val, max_val) for i in range(0, 2))
+    else:
+        theta = random.uniform(-np.pi, np.pi)
+        sx, sy = np.cos(theta) * radius, np.sin(theta) * radius
     grid = F.affine_grid(affine(x, [1, 0, sx], [0, 1, sy]), size=x.size())
     img = F.grid_sample(x, grid, padding_mode='border')
     return img
@@ -81,13 +93,17 @@ def flip(x):
     img = F.grid_sample(x, grid, padding_mode='border')
     return img
 
-def whiteout(x, n=6, min_scale=0.04, max_scale=0.2):
+def whiteout(x, n=6, min_scale=0.04, max_scale=0.2, rand_val=True, scale=0.1):
 
     noise = dtype(x.size(), device=x.device).normal_().requires_grad_(False)*0.5
 
     for i in range(0, n):
-        w = int(random.uniform(min_scale, max_scale)*x.shape[2])
-        h = int(random.uniform(min_scale, max_scale)*x.shape[3])
+        if rand_val:
+            w = int(random.uniform(min_scale, max_scale)*x.shape[2])
+            h = int(random.uniform(min_scale, max_scale)*x.shape[3])
+        else:
+            w, h = int(scale*x.shape[2]), int(scale*x.shape[3])
+
         sx, sy = random.randrange(0, x.shape[2] - w), random.randrange(0, x.shape[3] - h)
         
         mask = torch.ones_like(x)
@@ -120,6 +136,15 @@ def training(x):
     x = identity(x)
     return x
 
+def holdout(x):
+    x = random.choice([noise, color_jitter, whiteout, lambda x: x, lambda x: x])(x)
+    x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
+    x = random.choice([flip, crop, lambda x: x])(x)
+    x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
+    x = random.choice([noise, color_jitter, crop, lambda x: x, lambda x: x])(x)
+    x = identity(x)
+    return x
+
 def encoding(x):
     return training(x)
 
@@ -138,18 +163,25 @@ def encoding(x):
 #     x = identity(x)
 #     return x
 
+### NOT differentiable ###
+def convertToJpeg(x, q=10):
+    jpgs = []
+    for img in x:
+        img = img.squeeze()
+        img = torchvision.transforms.ToPILImage()(img.cpu())
+        with BytesIO() as f:
+            img.save(f, format='JPEG', quality=int(q))
+            f.seek(0)
+            ima_jpg = Image.open(f)
+            jpgs.append(torchvision.transforms.ToTensor()(ima_jpg))
+    return torch.stack(jpgs).to(DEVICE)
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     img = im.load("images/house.png")
     img = im.torch(img).unsqueeze(0)
-
-    plt.imsave(f"output/house_orig.jpg", im.numpy(img.squeeze()))
-    # returns an image after a series of transformations
-
-    for i in range(15):
-        plt.imsave(f"output/house_test_{i}.jpg", im.numpy(training(img).squeeze()))
+    plt.imsave("output/house-jpeg-transform.jpg", im.numpy(convertToJpeg(img).squeeze()))
 
     for transform in [identity, resize, resize_rect, color_jitter, crop,
                       scale, rotate, translate, gauss, noise, flip, whiteout,

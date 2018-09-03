@@ -80,7 +80,7 @@ def execute(cmd, mode='experiment', config="default", shutdown=False, debug=Fals
 		subprocess.call("sudo shutdown -h now", shell=True)
 
 def run(cmd, mode='experiment', config="default", shutdown=False, debug=False):
-	cmd = f""" screen bash -c "python run.py execute \\"{cmd}\\" --mode {mode} --config {config} --shutdown {shutdown} --debug {debug}" """
+	cmd = f""" screen -S {config} bash -c "python run.py execute \\"{cmd}\\" --mode {mode} --config {config} --shutdown {shutdown} --debug {debug}" """
 	subprocess.call(shlex.split(cmd))
 
 if __name__ == "__main__":

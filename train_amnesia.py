@@ -56,7 +56,9 @@ def init_data(output_path, n=None):
 if __name__ == "__main__":
 
 	model = DataParallelModel(DecodingModel(n=DIST_SIZE, distribution=transforms.training))
-	optimizer = torch.optim.Adam(model.module.classifier.parameters(), lr=2.5e-3)
+	params = itertools.chain(model.module.classifier.parameters(), 
+							model.module.features[-1].parameters())
+	optimizer = torch.optim.Adam(params, lr=2.5e-3)
 	init_data("data/amnesia")
 
 	logger = VisdomLogger("train", server='35.230.67.129', port=8000, env=JOB)
@@ -91,10 +93,11 @@ if __name__ == "__main__":
 
 		torch.save((perturbation.data, images.data, targets), save_file)
 
-		if i != 0 and i % 20 == 0:
-			#test_transforms(model, random.sample(TRAIN_FILES, 16), name=f'iter{i}_train')
+		if i != 0 and i % 300 == 0:
+			
 			model.save("output/train_test.pth")
 			model2 = DataParallelModel(DecodingModel.load(distribution=transforms.training,
 											n=DIST_SIZE, weights_file="output/train_test.pth"))
+			#test_transforms(model, random.sample(TRAIN_FILES, 16), name=f'iter{i}_train')
 			test_transforms(model2, VAL_FILES, name=f'iter{i}_test', max_iter=1)
 
