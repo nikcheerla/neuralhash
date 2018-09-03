@@ -123,11 +123,11 @@ def create_heatmap(data, lables, x_label, y_label):
 	plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
 	         rotation_mode="anchor")
 
-# Loop over data dimensions and create text annotations.
-for i in range(len(vegetables)):
-    for j in range(len(farmers)):
-        text = ax.text(j, i, harvest[i, j],
-                       ha="center", va="center", color="w")
+	# Loop over data dimensions and create text annotations.
+	for i in range(len(vegetables)):
+	    for j in range(len(farmers)):
+	        text = ax.text(j, i, harvest[i, j],
+	                       ha="center", va="center", color="w")
 
 def gaussian_filter(kernel_size=5, sigma=1.0):
 
