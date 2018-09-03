@@ -3,6 +3,10 @@
 import numpy as np
 import random, sys, os, time, glob, math
 
+import matplotlib as mpl
+mpl.use("Agg")
+import matplotlib.pyplot as plt
+
 from skimage import io, color
 
 import torch
@@ -11,6 +15,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 import random
+import IPython
 
 # CRITICAL HYPER PARAMS
 EPSILON = 9e-3
@@ -122,25 +127,33 @@ def elapsed(times=[time.time()]):
     return times[-1] - times[-2]
 
 
-def create_heatmap(data, lables, x_label, y_label):
-    fig, ax = plt.subplots()
-    im = ax.imshow(harvest)
+def create_heatmap(data, labels, x_label="", y_label=""):
+	fig, ax = plt.subplots()
+	im = ax.imshow(data)
 
-    # We want to show all ticks...
-    ax.set_xticks(np.arange(len(farmers)))
-    ax.set_yticks(np.arange(len(vegetables)))
-    # ... and label them with the respective list entries
-    ax.set_xticklabels(farmers)
-    ax.set_yticklabels(vegetables)
+	# We want to show all ticks...
+	ax.set_xticks(np.arange(len(labels)))
+	ax.set_yticks(np.arange(len(labels)))
+	# ... and label them with the respective list entries
+	ax.set_xticklabels(labels)
+	ax.set_yticklabels(labels)
 
-    # Rotate the tick labels and set their alignment.
-    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+	# Rotate the tick labels and set their alignment.
+	plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+	         rotation_mode="anchor")
 
-    # Loop over data dimensions and create text annotations.
-    for i in range(len(vegetables)):
-        for j in range(len(farmers)):
-            text = ax.text(j, i, harvest[i, j], ha="center", va="center", color="w")
+	# Loop over data dimensions and create text annotations.
+	for i in range(len(labels)):
+	    for j in range(len(labels)):
+	        text = ax.text(j, i, "{0:.2f}".format(round(data[i,j],2)),
+	                       ha="center", va="center", color="w")
 
+	ax.set_title("Affinity matrix")
+	fig.tight_layout()
+	plt.savefig(f"output/affinity.jpg")
+	plt.cla()
+	plt.clf()
+	plt.close()
 
 def gaussian_filter(kernel_size=5, sigma=1.0):
 
@@ -270,9 +283,15 @@ class binary(object):
 
 
 if __name__ == "__main__":
+<<<<<<< HEAD
+	IPython.embed()
+	data = im.load("test_data/n02108915_4657.jpg")
+	im.save(data, file="out.jpg")
+=======
 
     data = im.load("test_data/n02108915_4657.jpg")
     im.save(data, file="out.jpg")
+>>>>>>> 25eae7ca2859ddfad23270826d4e939297c06c2b
 
     print(im.torch(data).size())
     print(im.numpy(im.torch(data)).shape)
