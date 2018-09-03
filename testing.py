@@ -251,8 +251,21 @@ def evaluate(model, image, target, test_transforms=False):
         )
 
 
-def test_transfer(model, holdout, image_files=VAL_FILES, max_iter=250):
-    pass
+def test_transfer(model=None, image_files=VAL_FILES, name="test", max_iter=300):
+    if not isinstance(model, BaseModel):
+        print(f"Loading model from {model}")
+        model = DataParallelModel(
+            DecodingModel.load(distribution=transforms.encoding, n=ENCODING_DIST_SIZE, weights_file=model)
+        )
+    transform_list = [
+        transforms.rotate, 
+        transforms.scale, 
+        transforms.translate,
+        transforms.noise,
+        transforms.crop,
+        transforms.whiteout,
+    ]
+
 
 
 if __name__ == "__main__":
