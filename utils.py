@@ -137,6 +137,15 @@ def gaussian_filter(kernel_size=5, sigma=1.0):
 
 	return gaussian_kernel
 
+def motion_blur_filter(kernel_size=15):
+    channels = 3
+    kernel_motion_blur = torch.zeros((kernel_size, kernel_size))
+    kernel_motion_blur[int((kernel_size-1)/2), :] = torch.ones(kernel_size)
+    kernel_motion_blur = kernel_motion_blur / kernel_size
+    kernel_motion_blur = kernel_motion_blur.view(1, 1, kernel_size, kernel_size)
+    kernel_motion_blur = kernel_motion_blur.repeat(channels, 1, 1, 1)
+    return kernel_motion_blur
+
 """Image manipulation methods"""
 class im(object):
 

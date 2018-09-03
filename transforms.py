@@ -55,6 +55,28 @@ def scale(x, min_val=0.6, max_val=1.4, rand_val=True, scale_val=1):
     img = F.grid_sample(x, grid*scale_val, padding_mode='border')
     return img
 
+def elastic(x, x_val_range=0.3, y_val_range=0.3, p=0.1):
+    n = 3
+    N, C, H, W = x.shape
+    H_c, W_c = int((H*W*p)**0.5), int((H*W*p)**0.5)
+
+    x_scale = random.uniform(1-x_val_range, 1+x_val_range)
+    y_scale = random.uniform(1-y_val_range, 1+y_val_range)
+    grid = F.affine_grid(affine(x), size=x.size())
+    grid_y = grid[:, :, :, 0].unsqueeze(3)
+    grid_x = grid[:, :, :, 1].unsqueeze(3)
+
+    # stetch/contract n small image regions
+    for i in range(0, n):
+        x_coord = int(random.uniform(0, H-H_c))
+        y_coord = int(random.uniform(0, W-W_c))
+        grid_y[:,x_coord:x_coord+H_c,y_coord:y_coord+W_c] = grid_y[:,x_coord:x_coord+H_c,y_coord:y_coord+W_c] * y_scale
+        grid_x[:,x_coord:x_coord+H_c,y_coord:y_coord+W_c] = grid_x[:,x_coord:x_coord+H_c,y_coord:y_coord+W_c] * x_scale
+
+    grid = torch.cat([grid_y, grid_x], dim=3)
+    img = F.grid_sample(x, grid, padding_mode='border')
+    return img
+
 def rotate(x, max_angle=30, rand_val=True, theta=0):
     if rand_val: theta = np.radians(random.randint(-max_angle, max_angle))
     c, s = np.cos(theta), np.sin(theta)
@@ -75,10 +97,27 @@ def gauss(x, min_sigma=0.3, max_sigma=2, rand_val=True, sigma=1, filter=gaussian
     x = F.conv2d(x, weight=filter.to(x.device), bias=None, groups=3, padding=2)
     return x.clamp(min=1e-3, max=1)
 
+def motion_blur(x, filter=motion_blur_filter()):
+    x = F.conv2d(x, weight=filter.to(x.device), bias=None, groups=3)
+    return x.clamp(min=1e-3, max=1)
+
 def noise(x, intensity=0.05):
     noise = dtype(x.size(), device=x.device).normal_().requires_grad_(False)*intensity
     img = (x + noise).clamp(min=1e-3, max=1)
     return img
+
+def impulse_noise(x, intensity=0.1):
+    num = 10000
+    _, _, H, W = x.shape
+    x_coords = np.random.randint(low=0, high=H, size=(int(intensity*num),))
+    y_coords = np.random.randint(low=0, high=W, size=(int(intensity*num),))
+
+    R, G, B = (random.uniform(0, 1) for i in range(0, 3))
+    mask = torch.ones_like(x) 
+    mask[:, 0, x_coords, y_coords] = R
+    mask[:, 1, x_coords, y_coords] = G
+    mask[:, 2, x_coords, y_coords] = B
+    return x * mask
 
 def flip(x):
     grid = F.affine_grid(affine(x, [-1, 0, 0], [0, 1, 0]), size=x.size())
@@ -115,6 +154,51 @@ def crop(x, p=0.1):
     mask[:, :, x_coord:x_coord+H_c, y_coord:y_coord+W_c] = 1.0
     return x * mask
 
+def convertToJpeg(x):
+    x = x.squeeze()
+    x = transforms.ToPILImage()(x)
+    with BytesIO() as f:
+        x.save(f, format='JPEG')
+        f.seek(0)
+        ima_jpg = Image.open(f)
+        return transforms.ToTensor()(ima_jpg)
+
+def brightness(x, max_brightness=0.4, rand_val=True, brightness_val=0.2):
+    if rand_val: brightness_val = random.uniform(-max_brightness, max_brightness)
+    x = torch.cat([x[:, 0].unsqueeze(1)+brightness_val, \
+                    x[:, 1].unsqueeze(1)+brightness_val, \
+                    x[:, 2].unsqueeze(1)+brightness_val], dim=1)
+    return x.clamp(min=0, max=1)
+
+def contrast(x, min_contrast=0.4, max_contrast=1.4, rand_val=True, contrast_val=1.1):
+    if rand_val: contrast_val = random.uniform(-min_contrast, max_contrast)
+    x = torch.cat([x[:, 0].unsqueeze(1)*contrast_val, \
+                    x[:, 1].unsqueeze(1)*contrast_val, \
+                    x[:, 2].unsqueeze(1)*contrast_val], dim=1)
+    return x.clamp(min=0, max=1)
+
+def blur(x, min_blur=2, max_blur=5, rand_val=True, blur_val=4):
+    if rand_val: blur_val = int(random.uniform(min_blur, max_blur))
+    N, C, H, W = x.shape
+
+    # downsampling
+    out_size_h = H//blur_val
+    out_size_w = W//blur_val
+    a1 = torch.linspace(-1, 1, out_size_h).view(-1, 1).repeat(1, out_size_w)
+    b1 = torch.linspace(-1, 1, out_size_w).repeat(out_size_h, 1)
+    grid = torch.cat((a1.unsqueeze(2), b1.unsqueeze(2)), 2)
+    grid.unsqueeze_(0)
+    image_small = F.grid_sample(x, grid)
+
+    # upsampling
+    a2 = torch.linspace(-1, 1, H).view(-1, 1).repeat(1, W)
+    b2 = torch.linspace(-1, 1, W).repeat(H, 1)
+    grid = torch.cat((a2.unsqueeze(2), b2.unsqueeze(2)), 2)
+    grid.unsqueeze_(0)
+    image = F.grid_sample(image_small, grid)
+    
+    return image
+
 def training(x):
     x = random.choice([gauss, noise, color_jitter, whiteout, lambda x: x, lambda x: x])(x)
     x = random.choice([rotate, resize_rect, scale, translate, flip, lambda x: x])(x)
@@ -142,15 +226,6 @@ def easy(x):
     x = identity(x)
     return x
 
-def convertToJpeg(x):
-    x = x.squeeze()
-    x = transforms.ToPILImage()(x)
-    with BytesIO() as f:
-        x.save(f, format='JPEG')
-        f.seek(0)
-        ima_jpg = Image.open(f)
-        return transforms.ToTensor()(ima_jpg)
-
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
@@ -163,7 +238,7 @@ if __name__ == "__main__":
     # for i in range(15):
     #     plt.imsave(f"output/house_test_{i}.jpg", im.numpy(training(img).squeeze()))
 
-    plt.imsave("output/house-jpeg-transform.jpg", im.numpy(convertToJpeg(img).squeeze()))
+    plt.imsave("output/house-elastic.jpg", im.numpy(elastic(img).squeeze()))
 
     # time = timeit.timeit(lambda: im.numpy(transform(img).squeeze()), number=40)
 
