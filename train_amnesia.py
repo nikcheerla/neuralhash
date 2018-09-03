@@ -33,10 +33,7 @@ def loss_func(model, x, targets):
     predictions = scores.mean(dim=1)
     score_targets = binary.target(targets).unsqueeze(1).expand_as(scores)
 
-    return (
-        F.binary_cross_entropy(scores, score_targets),
-        predictions.cpu().data.numpy().round(2),
-    )
+    return (F.binary_cross_entropy(scores, score_targets), predictions.cpu().data.numpy().round(2))
 
 
 def init_data(output_path, n=None):
@@ -48,9 +45,7 @@ def init_data(output_path, n=None):
     if n is not None:
         image_files = image_files[0:n]
 
-    for k, files in tqdm.tqdm(
-        list(enumerate(batch(image_files, batch_size=BATCH_SIZE))), ncols=50
-    ):
+    for k, files in tqdm.tqdm(list(enumerate(batch(image_files, batch_size=BATCH_SIZE))), ncols=50):
 
         images = im.stack([im.load(img_file) for img_file in files]).detach()
         perturbation = nn.Parameter(0.03 * torch.randn(images.size()).to(DEVICE) + 0.0)
@@ -60,28 +55,16 @@ def init_data(output_path, n=None):
 
 if __name__ == "__main__":
 
-    model = DataParallelModel(
-        DecodingModel(n=DIST_SIZE, distribution=transforms.training)
-    )
-    params = itertools.chain(
-        model.module.classifier.parameters(), model.module.features[-1].parameters()
-    )
+    model = DataParallelModel(DecodingModel(n=DIST_SIZE, distribution=transforms.training))
+    params = itertools.chain(model.module.classifier.parameters(), model.module.features[-1].parameters())
     optimizer = torch.optim.Adam(params, lr=2.5e-3)
     init_data("data/amnesia")
 
     logger = VisdomLogger("train", server="35.230.67.129", port=8000, env=JOB)
     logger.add_hook(lambda x: logger.step(), feature="epoch", freq=20)
-    logger.add_hook(
-        lambda data: logger.plot(data, "train_loss"), feature="loss", freq=50
-    )
-    logger.add_hook(
-        lambda data: logger.plot(data, "train_bits"), feature="bits", freq=50
-    )
-    logger.add_hook(
-        lambda x: model.save("output/train_test.pth", verbose=True),
-        feature="epoch",
-        freq=100,
-    )
+    logger.add_hook(lambda data: logger.plot(data, "train_loss"), feature="loss", freq=50)
+    logger.add_hook(lambda data: logger.plot(data, "train_bits"), feature="bits", freq=50)
+    logger.add_hook(lambda x: model.save("output/train_test.pth", verbose=True), feature="epoch", freq=100)
     model.save("output/train_test.pth", verbose=True)
 
     files = glob.glob(f"data/amnesia/*.pth")
@@ -92,12 +75,7 @@ if __name__ == "__main__":
 
         perturbation.requires_grad = True
         encoded_ims, perturbation = encode_binary(
-            images,
-            targets,
-            model,
-            max_iter=1,
-            perturbation=perturbation,
-            use_weighting=True,
+            images, targets, model, max_iter=1, perturbation=perturbation, use_weighting=True
         )
 
         loss, predictions = loss_func(model, encoded_ims, targets)
@@ -117,11 +95,7 @@ if __name__ == "__main__":
 
             model.save("output/train_test.pth")
             model2 = DataParallelModel(
-                DecodingModel.load(
-                    distribution=transforms.training,
-                    n=DIST_SIZE,
-                    weights_file="output/train_test.pth",
-                )
+                DecodingModel.load(distribution=transforms.training, n=DIST_SIZE, weights_file="output/train_test.pth")
             )
             # test_transforms(model, random.sample(TRAIN_FILES, 16), name=f'iter{i}_train')
             test_transforms(model2, VAL_FILES, name=f"iter{i}_test", max_iter=300)

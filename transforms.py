@@ -24,17 +24,21 @@ def affine(data, x=[1, 0, 0], y=[0, 1, 0]):
     return dtype([x, y], device=data.device).float().repeat(data.shape[0], 1, 1)
 
 
-def sample(min_val=0, max_val=1, random_generator=random.uniform):
+def sample(min_val=0, max_val=1, generator=None):
+
+    if generator is None:
+        generator = lambda: random.uniform(min_val, max_val)
+
     def wrapper(transform):
         class RandomSampler:
             """Wrapper class that turns transforms into dynamic
             callables."""
 
-            def __init__(self, transform, min_val, max_val, random_generator):
+            def __init__(self, transform, min_val, max_val, generator):
                 self.min_val = min_val
                 self.max_val = max_val
                 self.transform = transform
-                self.random_generator = random_generator
+                self.generator = generator
                 self.__name__ = transform.__name__
 
             def __call__(self, x, val=None, **kwargs):
@@ -43,10 +47,10 @@ def sample(min_val=0, max_val=1, random_generator=random.uniform):
                 return self.transform(x, val, **kwargs)
 
             def random(self, x, **kwargs):
-                val = self.random_generator(self.min_val, self.max_val)
+                val = self.generator()
                 return self.transform(x, val, **kwargs)
 
-        return RandomSampler(transform, min_val, max_val, random_generator)
+        return RandomSampler(transform, min_val, max_val, generator)
 
     return wrapper
 
@@ -72,13 +76,7 @@ def resize_rect(x, ratio=0.8):
     y_scale = x_scale / ratio
 
     grid = F.affine_grid(affine(x), size=x.size())
-    grid = torch.cat(
-        [
-            grid[:, :, :, 0].unsqueeze(3) * y_scale,
-            grid[:, :, :, 1].unsqueeze(3) * x_scale,
-        ],
-        dim=3,
-    )
+    grid = torch.cat([grid[:, :, :, 0].unsqueeze(3) * y_scale, grid[:, :, :, 1].unsqueeze(3) * x_scale], dim=3)
     img = F.grid_sample(x, grid, padding_mode="border")
     return img
 
@@ -86,10 +84,7 @@ def resize_rect(x, ratio=0.8):
 @sample(0.05, 0.2)
 def color_jitter(x, jitter=0.1):
     R, G, B = (random.uniform(1 - jitter, 1 + jitter) for i in range(0, 3))
-    x = torch.cat(
-        [x[:, 0].unsqueeze(1) * R, x[:, 1].unsqueeze(1) * G, x[:, 2].unsqueeze(1) * B],
-        dim=1,
-    )
+    x = torch.cat([x[:, 0].unsqueeze(1) * R, x[:, 1].unsqueeze(1) * G, x[:, 2].unsqueeze(1) * B], dim=1)
     return x.clamp(min=0, max=1)
 
 
@@ -104,6 +99,35 @@ def scale(x, scale_val=1):
 def rotate(x, theta=45):
     c, s = np.cos(np.radians(theta)), np.sin(np.radians(theta))
     grid = F.affine_grid(affine(x, [c, s, 0], [-s, c, 0]), size=x.size())
+    img = F.grid_sample(x, grid, padding_mode="border")
+    return img
+
+
+@sample(0.9, 1.1)
+def elastic(x, ratio=0.8, n=3, p=0.1):
+
+    N, C, H, W = x.shape
+    H_c, W_c = int((H * W * p) ** 0.5), int((H * W * p) ** 0.5)
+
+    grid = F.affine_grid(affine(x), size=x.size())
+    grid_y = grid[:, :, :, 0].unsqueeze(3)
+    grid_x = grid[:, :, :, 1].unsqueeze(3)
+
+    # stretch/contract n small image regions
+    for i in range(0, n):
+        x_coord = int(random.uniform(0, H - H_c))
+        y_coord = int(random.uniform(0, W - W_c))
+
+        x_scale = random.uniform(0, 1 - ratio) + 1
+        y_scale = x_scale / ratio
+        grid_y[:, x_coord : x_coord + H_c, y_coord : y_coord + W_c] = (
+            grid_y[:, x_coord : x_coord + H_c, y_coord : y_coord + W_c] * y_scale
+        )
+        grid_x[:, x_coord : x_coord + H_c, y_coord : y_coord + W_c] = (
+            grid_x[:, x_coord : x_coord + H_c, y_coord : y_coord + W_c] * x_scale
+        )
+
+    grid = torch.cat([grid_y, grid_x], dim=3)
     img = F.grid_sample(x, grid, padding_mode="border")
     return img
 
@@ -124,7 +148,13 @@ def gauss(x, sigma=1):
     return x.clamp(min=1e-3, max=1)
 
 
-@sample(0.01, 0.2)
+@sample(0, 0)
+def motion_blur(x, val, filter=motion_blur_filter()):
+    x = F.conv2d(x, weight=filter.to(x.device), bias=None, groups=3)
+    return x.clamp(min=1e-3, max=1)
+
+
+@sample(0.03, 0.06)
 def noise(x, intensity=0.05):
     noise = dtype(x.size(), device=x.device).normal_().requires_grad_(False) * intensity
     img = (x + noise).clamp(min=1e-3, max=1)
@@ -140,6 +170,21 @@ def flip(x, val):
     return img
 
 
+@sample(0, 0.2)
+def impulse_noise(x, intensity=0.1):
+    num = 10000
+    _, _, H, W = x.shape
+    x_coords = np.random.randint(low=0, high=H, size=(int(intensity * num),))
+    y_coords = np.random.randint(low=0, high=W, size=(int(intensity * num),))
+
+    R, G, B = (random.uniform(0, 1) for i in range(0, 3))
+    mask = torch.ones_like(x)
+    mask[:, 0, x_coords, y_coords] = R
+    mask[:, 1, x_coords, y_coords] = G
+    mask[:, 2, x_coords, y_coords] = B
+    return x * mask
+
+
 @sample(0.01, 0.2)
 def whiteout(x, scale=0.1, n=6):
 
@@ -147,10 +192,7 @@ def whiteout(x, scale=0.1, n=6):
 
     for i in range(0, n):
         w, h = int(scale * x.shape[2]), int(scale * x.shape[3])
-        sx, sy = (
-            random.randrange(0, x.shape[2] - w),
-            random.randrange(0, x.shape[3] - h),
-        )
+        sx, sy = (random.randrange(0, x.shape[2] - w), random.randrange(0, x.shape[3] - h))
 
         mask = torch.ones_like(x)
         mask[:, :, sx : (sx + w), sy : (sy + h)] = 0.0
@@ -164,7 +206,7 @@ def whiteout(x, scale=0.1, n=6):
     return x
 
 
-@sample(10, 100)
+@sample(0.1, 1)
 def crop(x, p=0.1):
     N, C, H, W = x.shape
     H_c, W_c = int((H * W * p) ** 0.5), int((H * W * p) ** 0.5)
@@ -189,6 +231,55 @@ def jpeg_transform(x, q=50):
             ima_jpg = Image.open(f)
             jpgs.append(torchvision.transforms.ToTensor()(ima_jpg))
     return torch.stack(jpgs).to(DEVICE)
+
+
+@sample(-0.4, 0.4)
+def brightness(x, brightness_val=0.2):
+    x = torch.cat(
+        [
+            x[:, 0].unsqueeze(1) + brightness_val,
+            x[:, 1].unsqueeze(1) + brightness_val,
+            x[:, 2].unsqueeze(1) + brightness_val,
+        ],
+        dim=1,
+    )
+    return x.clamp(min=0, max=1)
+
+
+@sample(0.8, 1.2)
+def contrast(x, contrast_val=1.1):
+    factor = (259.0 * (contrast_val + 255.0)) / (255.0 * (259.0 - contrast_val))
+    R = (x[:, 0].unsqueeze(1) - 0.5) * factor + 0.5
+    G = (x[:, 1].unsqueeze(1) - 0.5) * factor + 0.5
+    B = (x[:, 2].unsqueeze(1) - 0.5) * factor + 0.5
+    x = torch.cat([R, G, B], dim=1)
+    return x.clamp(min=0, max=1)
+
+
+@sample(2, 6)
+def blur(x, blur_val=4):
+    N, C, H, W = x.shape
+
+    # downsampling
+    out_size_h = H // int(blur_val)
+    out_size_w = W // int(blur_val)
+    a1 = torch.linspace(-1, 1, out_size_h).to(x.device).view(-1, 1).repeat(1, out_size_w)
+    b1 = torch.linspace(-1, 1, out_size_w).to(x.device).repeat(out_size_h, 1)
+    grid = torch.cat((a1.unsqueeze(2), b1.unsqueeze(2)), 2).unsqueeze(0)
+    image_small = F.grid_sample(x, grid)
+
+    # upsampling
+    a2 = torch.linspace(-1, 1, H).to(x.device).view(-1, 1).repeat(1, W)
+    b2 = torch.linspace(-1, 1, W).to(x.device).repeat(H, 1)
+    grid = torch.cat((a2.unsqueeze(2), b2.unsqueeze(2)), 2).unsqueeze(0)
+    image = F.grid_sample(image_small, grid)
+
+    return image
+
+
+@sample(generator=lambda: random.choice([2, 4, 8]))
+def pixilate(x, res=4):
+    return F.upsample(F.avg_pool2d(x, int(res)), scale_factor=int(res))
 
 
 def training(x):
@@ -229,6 +320,14 @@ if __name__ == "__main__":
 
     for transform in [
         identity,
+        elastic,
+        motion_blur,
+        impulse_noise,
+        jpeg_transform,
+        brightness,
+        contrast,
+        blur,
+        pixilate,
         resize,
         resize_rect,
         color_jitter,
@@ -242,10 +341,8 @@ if __name__ == "__main__":
         whiteout,
     ]:
         transformed = im.numpy(transform.random(img).squeeze())
-        plt.imsave(f"output/{transform.__name__}.jpg", transformed)
-        time = timeit.timeit(
-            lambda: im.numpy(transform.random(img).squeeze()), number=40
-        )
+        plt.imsave(f"output/encoded_{transform.__name__}.jpg", transformed)
+        time = timeit.timeit(lambda: im.numpy(transform.random(img).squeeze()), number=40)
         print(f"{transform.__name__}: {time:0.5f}")
 
     for i in range(0, 10):

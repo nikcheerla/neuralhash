@@ -27,9 +27,7 @@ class Optimizer(nn.Module):
 
 
 class Adam(Optimizer):
-    def __init__(
-        self, parameters, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, differentiable=False
-    ):
+    def __init__(self, parameters, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, differentiable=False):
 
         super().__init__(parameters)
 
@@ -44,9 +42,7 @@ class Adam(Optimizer):
         state = self.state[param]
         step = state["step"] = state.get("step", 0) + 1
         exp_avg = state["exp_avg"] = state.get("exp_avg", torch.zeros_like(grad.data))
-        exp_avg_sq = state["exp_avg_sq"] = state.get(
-            "exp_avg_sq", torch.zeros_like(grad.data)
-        )
+        exp_avg_sq = state["exp_avg_sq"] = state.get("exp_avg_sq", torch.zeros_like(grad.data))
         beta1, beta2 = self.betas
 
         exp_avg = exp_avg * beta1 + (1 - beta1) * (grad)

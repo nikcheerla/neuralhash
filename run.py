@@ -18,9 +18,7 @@ def execute(cmd, mode="experiment", config="default", shutdown=False, debug=Fals
     run_data = run_log[mode] = run_log.get(mode, {})
     run_data["runs"] = run_data.get("runs", 0) + 1
     run_name = mode + str(run_data["runs"])
-    run_data[run_name] = run_data.get(
-        run_name, {"config": config, "cmd": cmd, "status": "Running"}
-    )
+    run_data[run_name] = run_data.get(run_name, {"config": config, "cmd": cmd, "status": "Running"})
     run_data = run_data[run_name]
 
     print(f"Running job: {run_name}")
@@ -40,9 +38,7 @@ def execute(cmd, mode="experiment", config="default", shutdown=False, debug=Fals
         cmd.insert(1, "-u")
 
     print(" ".join(cmd))
-    process = subprocess.Popen(
-        cmd, shell=False, stdout=subprocess.PIPE, universal_newlines=True
-    )
+    process = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, universal_newlines=True)
 
     try:
         with open(f"jobs/{run_name}/stdout.txt", "w") as outfile:
@@ -70,18 +66,8 @@ def execute(cmd, mode="experiment", config="default", shutdown=False, debug=Fals
     for file in glob.glob("*.py"):
         shutil.copy(file, f"jobs/{run_name}")
 
-    yaml.safe_dump(
-        run_log,
-        open("jobs/runlog.yml", "w"),
-        allow_unicode=True,
-        default_flow_style=False,
-    )
-    yaml.safe_dump(
-        run_data,
-        open(f"jobs/{run_name}/comments.yml", "w"),
-        allow_unicode=True,
-        default_flow_style=False,
-    )
+    yaml.safe_dump(run_log, open("jobs/runlog.yml", "w"), allow_unicode=True, default_flow_style=False)
+    yaml.safe_dump(run_data, open(f"jobs/{run_name}/comments.yml", "w"), allow_unicode=True, default_flow_style=False)
 
     interval = elapsed()
     print(f"Program ended after {interval:0.4f} seconds.")

@@ -58,9 +58,7 @@ def get_std_weight(images, n=5, alpha=0.5):
     with torch.no_grad():
         padded = F.pad(images, (n // 2, n // 2, n // 2, n // 2), mode="replicate")
         sums = F.conv2d(padded, kernel.to(DEVICE), groups=3, padding=0) * (1 / (n ** 2))
-        sums_2 = F.conv2d(padded ** 2, kernel.to(DEVICE), groups=3, padding=0) * (
-            1 / (n ** 2)
-        )
+        sums_2 = F.conv2d(padded ** 2, kernel.to(DEVICE), groups=3, padding=0) * (1 / (n ** 2))
         stds = (sums_2 - (sums ** 2) + 1e-5) ** alpha
     return stds.detach()
 
@@ -94,9 +92,7 @@ def color_normalize(x):
 
 
 def tve_loss(x):
-    return ((x[:, :-1, :] - x[:, 1:, :]) ** 2).sum() + (
-        (x[:, :, :-1] - x[:, :, 1:]) ** 2
-    ).sum()
+    return ((x[:, :-1, :] - x[:, 1:, :]) ** 2).sum() + ((x[:, :, :-1] - x[:, :, 1:]) ** 2).sum()
 
 
 def batch(datagen, batch_size=32):
@@ -152,6 +148,16 @@ def gaussian_filter(kernel_size=5, sigma=1.0):
     gaussian_kernel = gaussian_kernel.repeat(channels, 1, 1, 1)
 
     return gaussian_kernel
+
+
+def motion_blur_filter(kernel_size=7):
+    channels = 3
+    kernel_motion_blur = torch.zeros((kernel_size, kernel_size))
+    kernel_motion_blur[int((kernel_size - 1) / 2), :] = torch.ones(kernel_size)
+    kernel_motion_blur = kernel_motion_blur / kernel_size
+    kernel_motion_blur = kernel_motion_blur.view(1, 1, kernel_size, kernel_size)
+    kernel_motion_blur = kernel_motion_blur.repeat(channels, 1, 1, 1)
+    return kernel_motion_blur
 
 
 """Image manipulation methods"""

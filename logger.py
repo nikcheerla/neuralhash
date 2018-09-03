@@ -85,9 +85,7 @@ class VisdomLogger(BaseLogger):
         self.server = kwargs.pop("server", "35.230.67.129")
         self.env = kwargs.pop("env", "main")
         print(f"Logging to environment {self.env}")
-        self.visdom = visdom.Visdom(
-            server="http://" + self.server, port=self.port, env=self.env
-        )
+        self.visdom = visdom.Visdom(server="http://" + self.server, port=self.port, env=self.env)
         self.visdom.delete_env(self.env)
         self.windows = {}
         super().__init__(*args, **kwargs)
@@ -123,9 +121,7 @@ class VisdomLogger(BaseLogger):
 
     def images(self, data, image_name, opts={}, resize=64):
 
-        transform = transforms.Compose(
-            [transforms.ToPILImage(), transforms.Resize(resize), transforms.ToTensor()]
-        )
+        transform = transforms.Compose([transforms.ToPILImage(), transforms.Resize(resize), transforms.ToTensor()])
         data = torch.stack([transform(x) for x in data.cpu()])
         data = data.data.cpu().numpy()
 
