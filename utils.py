@@ -283,15 +283,9 @@ class binary(object):
 
 
 if __name__ == "__main__":
-<<<<<<< HEAD
-	IPython.embed()
-	data = im.load("test_data/n02108915_4657.jpg")
-	im.save(data, file="out.jpg")
-=======
 
     data = im.load("test_data/n02108915_4657.jpg")
     im.save(data, file="out.jpg")
->>>>>>> 25eae7ca2859ddfad23270826d4e939297c06c2b
 
     print(im.torch(data).size())
     print(im.numpy(im.torch(data)).shape)
