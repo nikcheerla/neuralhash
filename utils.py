@@ -160,10 +160,9 @@ def motion_blur_filter(kernel_size=7):
     return kernel_motion_blur
 
 
-"""Image manipulation methods"""
-
-
 class im(object):
+    """Image manipulation methods"""
+
     @staticmethod
     def load(filename):
 
@@ -197,10 +196,9 @@ class im(object):
         return torch.cat([im.torch(image).unsqueeze(0) for image in images], dim=0)
 
 
-"""Binary array data manipulation methods"""
-
-
 class binary(object):
+    """Binary array data manipulation methods"""
+
     @staticmethod
     def parse(bstr):
         return [int(c) for c in bstr]

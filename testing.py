@@ -99,7 +99,24 @@ def test_transforms(model=None, image_files=VAL_FILES, name="test", max_iter=300
     predictions = model(encoded_images).mean(dim=1).cpu().data.numpy()
     binary_loss = np.mean([binary.distance(x, y) for x, y in zip(predictions, targets)])
 
-    for transform in [transforms.rotate, transforms.scale, transforms.translate]:
+    for transform in [
+        transforms.pixilate,
+        transforms.blur,
+        transforms.rotate,
+        transforms.scale,
+        transforms.translate,
+        transforms.noise,
+        transforms.crop,
+        transforms.gauss,
+        transforms.whiteout,
+        transforms.resize_rect,
+        transforms.color_jitter,
+        transforms.jpeg_transform,
+        transforms.elastic,
+        transforms.brightness,
+        transforms.contrast,
+        transforms.flip,
+    ]:
         sweep(encoded_images, targets, model, transform=transform, name=name, samples=60)
 
     # sweep(
@@ -241,14 +258,7 @@ def evaluate(model, image, target, test_transforms=False):
     #         Distance: {binary.distance(target, prediction)}")
 
     if test_transforms:
-        sweep(
-            image,
-            [target],
-            model,
-            transform=lambda x, val: transforms.rotate(x, rand_val=False, theta=val),
-            name="eval",
-            samples=60,
-        )
+        sweep(image, [target], model, transform=transforms.rotate, name="eval", samples=60)
 
 
 def test_transfer(model, holdout, image_files=VAL_FILES, max_iter=250):

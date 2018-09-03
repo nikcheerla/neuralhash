@@ -2,7 +2,7 @@
 from __future__ import print_function
 
 import numpy as np
-import random, sys, os, timeit
+import random, sys, os, timeit, math
 
 import torch
 import torch.nn as nn
@@ -148,8 +148,9 @@ def gauss(x, sigma=1):
     return x.clamp(min=1e-3, max=1)
 
 
-@sample(0, 0)
-def motion_blur(x, val, filter=motion_blur_filter()):
+@sample(5, 9)
+def motion_blur(x, val):
+    filter = motion_blur_filter(kernel_size=int(val))
     x = F.conv2d(x, weight=filter.to(x.device), bias=None, groups=3)
     return x.clamp(min=1e-3, max=1)
 
@@ -261,24 +262,22 @@ def blur(x, blur_val=4):
     N, C, H, W = x.shape
 
     # downsampling
-    out_size_h = H // int(blur_val)
-    out_size_w = W // int(blur_val)
-    a1 = torch.linspace(-1, 1, out_size_h).to(x.device).view(-1, 1).repeat(1, out_size_w)
-    b1 = torch.linspace(-1, 1, out_size_w).to(x.device).repeat(out_size_h, 1)
-    grid = torch.cat((a1.unsqueeze(2), b1.unsqueeze(2)), 2).unsqueeze(0)
-    image_small = F.grid_sample(x, grid)
+    out_size_h = H // max(int(blur_val), 2)
+    out_size_w = W // max(int(blur_val), 2)
+    grid = F.affine_grid(affine(x), size=torch.Size((x.shape[0], 3, out_size_h, out_size_w)))
+    x = F.grid_sample(x, grid, padding_mode="border")
 
     # upsampling
-    a2 = torch.linspace(-1, 1, H).to(x.device).view(-1, 1).repeat(1, W)
-    b2 = torch.linspace(-1, 1, W).to(x.device).repeat(H, 1)
-    grid = torch.cat((a2.unsqueeze(2), b2.unsqueeze(2)), 2).unsqueeze(0)
-    image = F.grid_sample(image_small, grid)
+    grid = F.affine_grid(affine(x), size=torch.Size((x.shape[0], 3, H, W)))
+    x = F.grid_sample(x, grid, padding_mode="border")
 
-    return image
+    return x
 
 
-@sample(generator=lambda: random.choice([2, 4, 8]))
+@sample(2, 8)
 def pixilate(x, res=4):
+    res = max(2, min(res, 8))
+    res = max(2, min(2 ** (math.ceil(math.log(res, 2))), 8))
     return F.upsample(F.avg_pool2d(x, int(res)), scale_factor=int(res))
 
 
