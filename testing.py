@@ -273,16 +273,24 @@ def test_transfer(model=None, image_files=VAL_FILES, max_iter=250):
 
     transform_list = [
         transforms.rotate,
-        transforms.scale,
-        transforms.translate,
-        transforms.noise,
-        transforms.crop,
-        transforms.whiteout,
-        transforms.resize_rect,
-        transforms.gauss,
-        transforms.flip,
+        # transforms.translate,
+        # transforms.scale,
+        # transforms.resize_rect,
+        # transforms.crop,
+        # transforms.whiteout,
+        # transforms.elastic,
+        # transforms.motion_blur,
+        # transforms.brightness,
+        # transforms.contrast,
+        # transforms.pixilate,
+        # transforms.blur,
+        # transforms.color_jitter,
+        # transforms.gauss,
+        # transforms.noise,
+        # transforms.impulse_noise,
+        # transforms.flip,
     ]
-    edges, base_scores = {}, {}
+    labels = [t.__name__ for t in transform_list]
     score_matrix = np.zeros((len(transform_list), len(transform_list)))
 
     for i, t1 in enumerate(transform_list):
@@ -295,23 +303,18 @@ def test_transfer(model=None, image_files=VAL_FILES, max_iter=250):
 
         model.set_distribution(transforms.identity, n=1)
         t1_error = sweep(encoded_images, targets, model, transform=t1, name=f"{t1.__name__}", samples=60)
-        base_scores[t1.__name__] = t1_error
         
         for j, t2 in enumerate(transform_list):
-            if t1 == t2: continue
-            
+            if t1.__name__ == t2.__name__: 
+                score_matrix[i,j] = t1_error
+                continue
             t2_error = sweep(encoded_images, targets, model, transform=t2, name=f'{t1.__name__}->{t2.__name__}', samples=60)
-            
-            edges[(t1.__name__, t2.__name__)] = t2_error
             score_matrix[i,j] = t2_error
-            print(f'{t1.__name__} --> {t2.__name__}: {t2_error}')
 
-    with open('output/score_matrix.p') as fp:
-        pickle.dump(score_matrix, fp)
-    with open('output/edges.p', 'wb') as fp:
-        pickle.dump(edges, fp)
-    with open("output/base_scores.p", "wb") as fp:
-        pickle.dump(base_scores, fp)
+            print(f'{t1.__name__} --> {t2.__name__}: {t2_error}')
+    np.save('labels', labels)
+    np.save('score_matrix', score_matrix)
+    create_heatmap(score_matrix, labels)
 
 
 if __name__ == "__main__":

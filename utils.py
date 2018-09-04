@@ -127,7 +127,7 @@ def elapsed(times=[time.time()]):
     return times[-1] - times[-2]
 
 
-def create_heatmap(data, labels, x_label="", y_label=""):
+def create_heatmap(data, labels, filename='output/heatmap.jpg', x_label="", y_label=""):
 	fig, ax = plt.subplots()
 	im = ax.imshow(data)
 
@@ -150,7 +150,7 @@ def create_heatmap(data, labels, x_label="", y_label=""):
 
 	ax.set_title("Affinity matrix")
 	fig.tight_layout()
-	plt.savefig(f"output/affinity.jpg")
+	plt.savefig(filename)
 	plt.cla()
 	plt.clf()
 	plt.close()
