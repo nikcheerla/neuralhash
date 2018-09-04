@@ -290,13 +290,13 @@ def test_transfer(model=None, image_files=VAL_FILES, max_iter=250):
         transforms.impulse_noise,
         transforms.flip,
     ]
+
     labels = [t.__name__ for t in transform_list]
     score_matrix = np.zeros((len(transform_list), len(transform_list)))
 
     for i, t1 in enumerate(transform_list):
             
         model.set_distribution(lambda x: t1.random(x), n=ENCODING_DIST_SIZE)
-
         encoded_images = encode_binary(
             images, targets, model, n=ENCODING_DIST_SIZE, verbose=True, max_iter=max_iter, use_weighting=True
         )

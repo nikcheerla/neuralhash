@@ -289,30 +289,52 @@ def pixilate(x, res=4):
     return F.upsample(F.avg_pool2d(x, int(res)), scale_factor=int(res))
 
 
+# def training(x):
+#     _ = sample(0, 0)(lambda x, val: x)
+#     x = random.choice([gauss, noise, color_jitter, whiteout, _, _]).random(x)
+#     x = random.choice([rotate, resize_rect, scale, translate, flip, _, _]).random(x)
+#     x = random.choice([flip, crop, _]).random(x)
+#     x = random.choice([rotate, resize_rect, scale, translate, flip, _]).random(x)
+#     x = random.choice([gauss, noise, color_jitter, crop, _, _]).random(x)
+#     x = identity(x)
+#     return x
+
+
 def training(x):
     _ = sample(0, 0)(lambda x, val: x)
-    x = random.choice([gauss, noise, color_jitter, whiteout, _, _]).random(x)
-    x = random.choice([rotate, resize_rect, scale, translate, flip, _, _]).random(x)
-    x = random.choice([flip, crop, _]).random(x)
-    x = random.choice([rotate, resize_rect, scale, translate, flip, _]).random(x)
-    x = random.choice([gauss, noise, color_jitter, crop, _, _]).random(x)
+    t_list = [
+        identity,
+        elastic,
+        motion_blur,
+        impulse_noise,
+        jpeg_transform,
+        brightness,
+        contrast,
+        blur,
+        pixilate,
+        resize,
+        resize_rect,
+        color_jitter,
+        crop,
+        scale,
+        rotate,
+        translate,
+        gauss,
+        noise,
+        flip,
+        whiteout,
+        _,
+        _,
+    ]
+    x = random.choice(t_list).random(x)
+    x = random.choice(t_list).random(x)
+    x = random.choice(t_list).random(x)
     x = identity(x)
     return x
 
 
 def encoding(x):
     return training(x)
-
-
-def new_dist(x, t_list):
-    # _ = sample(0, 0)(lambda x, val: x)
-    # t_list.extend([_,_])
-    x = random.choice(t_list).random(x)
-    # x = random.choice(t_list).random(x)
-    # x = random.choice(t_list).random(x)
-
-    x = identity(x)
-    return x
 
 
 # def inference(x):
