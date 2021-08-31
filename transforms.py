@@ -73,8 +73,8 @@ def identity(x, val=None):
 @sample(100, 300)
 def resize(x, val=224):
     val = int(val)
-    grid = F.affine_grid(affine(x), size=torch.Size((x.shape[0], 3, val, val)))
-    img = F.grid_sample(x, grid, padding_mode="border")
+    grid = F.affine_grid(affine(x), size=torch.Size((x.shape[0], 3, val, val)), align_corners=True)
+    img = F.grid_sample(x, grid, padding_mode="border", align_corners=True)
     return img
 
 
@@ -84,9 +84,9 @@ def resize_rect(x, ratio=0.8):
     x_scale = random.uniform(ratio, 1)
     y_scale = x_scale / ratio
 
-    grid = F.affine_grid(affine(x), size=x.size())
+    grid = F.affine_grid(affine(x), size=x.size(), align_corners=True)
     grid = torch.cat([grid[:, :, :, 0].unsqueeze(3) * y_scale, grid[:, :, :, 1].unsqueeze(3) * x_scale], dim=3)
-    img = F.grid_sample(x, grid, padding_mode="border")
+    img = F.grid_sample(x, grid, padding_mode="border", align_corners=True)
     return img
 
 
@@ -99,16 +99,16 @@ def color_jitter(x, jitter=0.1):
 
 @sample(0.6, 1.4)
 def scale(x, scale_val=1):
-    grid = F.affine_grid(affine(x), size=x.size())
-    img = F.grid_sample(x, grid * scale_val, padding_mode="border")
+    grid = F.affine_grid(affine(x), size=x.size(), align_corners=True)
+    img = F.grid_sample(x, grid * scale_val, padding_mode="border", align_corners=True)
     return img
 
 
 @sample(-60, 60)
 def rotate(x, theta=45):
     c, s = np.cos(np.radians(theta)), np.sin(np.radians(theta))
-    grid = F.affine_grid(affine(x, [c, s, 0], [-s, c, 0]), size=x.size())
-    img = F.grid_sample(x, grid, padding_mode="border")
+    grid = F.affine_grid(affine(x, [c, s, 0], [-s, c, 0]), size=x.size(), align_corners=True)
+    img = F.grid_sample(x, grid, padding_mode="border", align_corners=True)
     return img
 
 
@@ -118,7 +118,7 @@ def elastic(x, ratio=0.8, n=3, p=0.1):
     N, C, H, W = x.shape
     H_c, W_c = int((H * W * p) ** 0.5), int((H * W * p) ** 0.5)
 
-    grid = F.affine_grid(affine(x), size=x.size())
+    grid = F.affine_grid(affine(x), size=x.size(), align_corners=True)
     grid_y = grid[:, :, :, 0].unsqueeze(3)
     grid_x = grid[:, :, :, 1].unsqueeze(3)
 
@@ -137,7 +137,7 @@ def elastic(x, ratio=0.8, n=3, p=0.1):
         )
 
     grid = torch.cat([grid_y, grid_x], dim=3)
-    img = F.grid_sample(x, grid, padding_mode="border")
+    img = F.grid_sample(x, grid, padding_mode="border", align_corners=True)
     return img
 
 
@@ -145,8 +145,8 @@ def elastic(x, ratio=0.8, n=3, p=0.1):
 def translate(x, radius=0.15):
     theta = random.uniform(-np.pi, np.pi)
     sx, sy = np.cos(theta) * radius, np.sin(theta) * radius
-    grid = F.affine_grid(affine(x, [1, 0, sx], [0, 1, sy]), size=x.size())
-    img = F.grid_sample(x, grid, padding_mode="border")
+    grid = F.affine_grid(affine(x, [1, 0, sx], [0, 1, sy]), size=x.size(), align_corners=True)
+    img = F.grid_sample(x, grid, padding_mode="border", align_corners=True)
     return img
 
 
@@ -175,8 +175,8 @@ def noise(x, intensity=0.05):
 def flip(x, val):
     if val < 0.5:
         return x
-    grid = F.affine_grid(affine(x, [-1, 0, 0], [0, 1, 0]), size=x.size())
-    img = F.grid_sample(x, grid, padding_mode="border")
+    grid = F.affine_grid(affine(x, [-1, 0, 0], [0, 1, 0]), size=x.size(), align_corners=True)
+    img = F.grid_sample(x, grid, padding_mode="border", align_corners=True)
     return img
 
 
@@ -272,12 +272,12 @@ def blur(x, blur_val=4):
     # downsampling
     out_size_h = H // max(int(blur_val), 2)
     out_size_w = W // max(int(blur_val), 2)
-    grid = F.affine_grid(affine(x), size=torch.Size((x.shape[0], 3, out_size_h, out_size_w)))
-    x = F.grid_sample(x, grid, padding_mode="border")
+    grid = F.affine_grid(affine(x), size=torch.Size((x.shape[0], 3, out_size_h, out_size_w)), align_corners=True)
+    x = F.grid_sample(x, grid, padding_mode="border", align_corners=True)
 
     # upsampling
-    grid = F.affine_grid(affine(x), size=torch.Size((x.shape[0], 3, H, W)))
-    x = F.grid_sample(x, grid, padding_mode="border")
+    grid = F.affine_grid(affine(x), size=torch.Size((x.shape[0], 3, H, W)), align_corners=True)
+    x = F.grid_sample(x, grid, padding_mode="border", align_corners=True)
 
     return x
 
